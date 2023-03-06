@@ -1,5 +1,8 @@
+import matplotlib
 import matplotlib.pyplot as plt
-
+from IPython.display import HTML
+from matplotlib.animation import FuncAnimation
+    
 
 def get_hand_points(hand):
     x = [
@@ -151,7 +154,7 @@ def get_pose_points(pose):
     return x, y
 
 
-def plot_frame(f, sign, ax):
+def plot_frame(f, sign, ax, title=''):
     xmin = sign.x.min() - 0.2
     xmax = sign.x.max() + 0.2
     ymin = sign.y.min() - 0.2
@@ -179,3 +182,19 @@ def plot_frame(f, sign, ax):
 
     plt.xlim(xmin, xmax)
     plt.ylim(ymin, ymax)
+    
+    if title:
+        plt.title(title)
+
+    plt.axis(False)
+    plt.tight_layout()
+    
+
+def animate(sign, label):
+    matplotlib.use('Agg')
+
+    fig, ax = plt.subplots()
+    l, = ax.plot([], [])
+    animation = FuncAnimation(fig, func=lambda x: plot_frame(x, sign, ax, title=label), frames=sign.frame.unique())
+
+    return HTML(animation.to_html5_video())

@@ -1,19 +1,100 @@
-# Hardcoded stuff, paths are to adapt to your setup
-import numpy as np
-
 NUM_WORKERS = 8
 
 DATA_PATH = "../input/"
-# TRAIN_DCM_PATH = "/raid/train_images/"
 LOG_PATH = "../logs/"
 OUT_PATH = "../output/"
 
 CLASSES = ["cancer"]
 NUM_CLASSES = 250
 
-MEAN = np.array([0.66437738, 0.50478148, 0.70114894])
-STD = np.array([0.15825711, 0.24371008, 0.13832686])
-
 DEVICE = "cuda"
 
-NEPTUNE_PROJECT = "KagglingTheo/RSNA-Breast-Cancer-Detection"
+NEPTUNE_PROJECT = "KagglingTheo/Isolated-Sign-Language-Recognition"
+
+FACE_LANDMARKS = {
+    "silhouette": [
+        10,  338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288,
+        397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136,
+        172, 58,  132, 93,  234, 127, 162, 21,  54,  103, 67,  109
+    ][::2],
+
+    "lipsUpperOuter": [61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291],
+    "lipsLowerOuter": [146, 91, 181, 84, 17, 314, 405, 321, 375, 291],
+    "lipsUpperInner": [78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308],
+    "lipsLowerInner": [78, 95, 88, 178, 87, 14, 317, 402, 318, 324, 308],
+
+    "rightEyeUpper0": [246, 161, 160, 159, 158, 157, 173][::2],
+    "rightEyeLower0": [33, 7, 163, 144, 145, 153, 154, 155, 133][::2],
+#     "rightEyeUpper1": [247, 30, 29, 27, 28, 56, 190],
+#     "rightEyeLower1": [130, 25, 110, 24, 23, 22, 26, 112, 243],
+#     "rightEyeUpper2": [113, 225, 224, 223, 222, 221, 189],
+#     "rightEyeLower2": [226, 31, 228, 229, 230, 231, 232, 233, 244],
+#     "rightEyeLower3": [143, 111, 117, 118, 119, 120, 121, 128, 245],
+
+    "rightEyebrowUpper": [156, 70, 63, 105, 66, 107, 55, 193][::2],
+#     "rightEyebrowLower": [35, 124, 46, 53, 52, 65],
+
+#     "rightEyeIris": [473, 474, 475, 476, 477],
+
+    "leftEyeUpper0": [466, 388, 387, 386, 385, 384, 398][::2],
+    "leftEyeLower0": [263, 249, 390, 373, 374, 380, 381, 382, 362][::2],
+#     "leftEyeUpper1": [467, 260, 259, 257, 258, 286, 414],
+#     "leftEyeLower1": [359, 255, 339, 254, 253, 252, 256, 341, 463],
+#     "leftEyeUpper2": [342, 445, 444, 443, 442, 441, 413],
+#     "leftEyeLower2": [446, 261, 448, 449, 450, 451, 452, 453, 464],
+#     "leftEyeLower3": [372, 340, 346, 347, 348, 349, 350, 357, 465],
+
+    "leftEyebrowUpper": [383, 300, 293, 334, 296, 336, 285, 417][::2],
+#     "leftEyebrowLower": [265, 353, 276, 283, 282, 295],
+
+#     "leftEyeIris": [468, 469, 470, 471, 472],
+
+    "midwayBetweenEyes": [168],
+    "nose": [1, 2, 98, 327],
+    "rightCheek": [205],
+    "leftCheek": [425]
+}
+
+FACE_LANDMARKS = {
+    "silhouette": [
+        10, 297, 284, 389, 454, 361, 397, 379, 400, 152, 176, 150, 172, 132, 234, 162, 54, 67,
+    ],
+
+    "lips": [
+        61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, 146, 91, 181, 84, 17, 314, 405, 
+        321, 375, 291, 78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308, 78, 95, 88, 178, 
+        87, 14, 317, 402, 318, 324, 308
+    ][::2],
+
+    "right_eye": [246, 160, 158, 173, 33, 163, 145, 154, 133],
+    "right_eyebrow": [156, 63, 66, 55],
+
+    "left_eye": [466, 387, 385, 398, 263, 390, 374, 381, 362],
+    "left_eyebrow": [383, 293, 296, 285],
+
+    "nose": [1, 2, 98, 327, 168],
+    "cheeks": [205, 425],
+}
+
+
+
+POSE_LANDMARKS = [
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+]
+
+ARM_LANDMARKS = [22, 16, 20, 18, 16, 14, 12, 11, 13, 15, 17, 19, 15, 21,]
+
+
+TYPE_MAPPING = {
+    'arm': 1,
+    'cheeks': 2,
+    'left_eye': 3,
+    'left_eyebrow': 4,
+    'left_hand': 5,
+    'lips': 6,
+    'nose': 7,
+    'right_eye': 8,
+    'right_eyebrow': 9,
+    'right_hand': 10,
+    'silhouette': 11
+}

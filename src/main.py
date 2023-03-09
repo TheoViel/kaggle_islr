@@ -24,18 +24,15 @@
 # import torch_performance_linter
 
 import os
-import cv2
 import time
 import torch
 import warnings
 import argparse
 
 from data.preparation import prepare_data
-from params import DATA_PATH, PRETRAINED_WEIGHTS
-from utils.torch import init_distributed   # , map_cpu sync_across_gpus,
+from params import DATA_PATH
+from utils.torch import init_distributed
 from utils.logger import create_logger, save_config, prepare_log_folder, init_neptune
-
-cv2.setNumThreads(0)
 
 
 def parse_args():
@@ -93,84 +90,63 @@ class Config:
     """
     Parameters used for training
     """
-
     # General
     seed = 42
     verbose = 1
     device = "cuda"
     save_weights = True
 
-    # Images
-#     img_folder = "yolox_1536_1024/"
-    img_folder = "crops_512_512/"
-
-    window = img_folder.endswith("_w/")
-    aug_strength = 0
-    resize = None
-
-    use_cbis = False
-    use_cmmd = False
-    use_pasm = False
-    use_pl = False
+    # Data
+    processed_folder = "processed_3/"
+    max_len = 50
 
     # k-fold
     k = 4
-    folds_file = "../input/folds_mpware.csv"
-    selected_folds = [0, 1, 2, 3]
+    folds_file = f"../input/folds_{k}.csv"
+    selected_folds = [0, 1]
 
     # Model
-    name = "eca_nfnet_l2"  # "tf_efficientnetv2_s" "eca_nfnet_l1"
-    pretrained_weights = "../logs/2023-02-16/5/"  # PRETRAINED_WEIGHTS.get(name, None)
-    num_classes = 1
-    num_classes_aux = 0
-    n_channels = 3
-    reduce_stride = False
-    drop_rate = 0.1
-    drop_path_rate = 0.1
-    use_gem = True
+    name = "bert_deberta"
+    pretrained_weights = None
     syncbn = False
+    num_classes = 250
+    
+    embed_dim = 128
+    transfo_dim = embed_dim * 3
+    transfo_heads = 8
+    drop_rate = 0.1
 
-    # Training
+    # Training    
     loss_config = {
-        "name": "bce",
-        "smoothing": 0.0,
-        "activation": "sigmoid",
+        "name": "ce",
+        "smoothing": 0.1,
+        "activation": "softmax",
         "aux_loss_weight": 0.,
-        "pos_weight": None,
         "activation_aux": "softmax",
-        "gmic": "gmic" in name,
     }
 
     data_config = {
-        "batch_size": 8,
-        "val_bs": 8,
-        "mix": "mixup",
-        "mix_proba": 0.0,
-        "mix_alpha": 4.0,
-        "additive_mix": False,
+        "batch_size": 32,
+        "val_bs": 32,
         "use_len_sampler": False,
-        "use_balanced_sampler": False,
-        "use_weighted_sampler": False,
-        "sampler_weights": [1, 1, 1, 1],  # pos, birads 0, 1, 2
-        "use_custom_collate": False,
     }
 
     optimizer_config = {
-        "name": "Ranger",
-        "lr": 5e-5,
-        "warmup_prop": 0.0,
+        "name": "AdamW",
+        "lr": 3e-4,
+        "warmup_prop": 0.1,
         "betas": (0.9, 0.999),
-        "max_grad_norm": 10.0,
-        "weight_decay": 0,  # 1e-2,
+        "max_grad_norm": 10.,
     }
 
-    epochs = 5
+    epochs = 40
+
     use_fp16 = True
 
     verbose = 1
-    verbose_eval = 200
+    verbose_eval = 250
 
-    fullfit = True
+    fullfit = False
     n_fullfit = 1
 
 
@@ -200,7 +176,6 @@ if __name__ == "__main__":
 
     if args.model:
         config.name = args.model
-        config.loss_config["gmic"] = "gmic" in config.name
         if config.pretrained_weights is not None:
             config.pretrained_weights = PRETRAINED_WEIGHTS.get(args.model, None)
 
@@ -214,7 +189,7 @@ if __name__ == "__main__":
         config.data_config["batch_size"] = args.batch_size
         config.data_config["val_bs"] = args.batch_size
 
-    df = prepare_data(DATA_PATH, config.img_folder)
+    df = prepare_data(DATA_PATH, config.processed_folder)
 
     try:
         print(torch_performance_linter)  # noqa
@@ -240,7 +215,7 @@ if __name__ == "__main__":
     if config.local_rank == 0:
         print("Device :", torch.cuda.get_device_name(0), "\n")
 
-        print(f"- Model  {config.name}")
+        print(f"- Model {config.name}")
         print(f"- Epochs {config.epochs}")
         print(
             f"- Learning rate {config.optimizer_config['lr']:.1e}   (n_gpus={config.world_size})"
@@ -249,6 +224,7 @@ if __name__ == "__main__":
 
     from training.main import k_fold
 
+#     df = df.head(10000).reset_index(drop=True)
     k_fold(Config, df, log_folder=log_folder, run=run)
 
     if config.local_rank == 0:

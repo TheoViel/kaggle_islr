@@ -18,10 +18,14 @@ class LenMatchBatchSampler(BatchSampler):
         yielded = 0
 
         for idx in self.sampler:
-            bucket_id = self.sampler.data_source[idx][0].size(-1) // 20
+            try:
+                data = self.sampler.data_source[idx]
+            except AttributeError:
+                data = self.sampler.dataset[idx]
+            bucket_id = (data["type"][:, 0] != 0).sum() // 10
+
             if len(buckets[bucket_id]) == 0:
                 buckets[bucket_id] = []
-
             buckets[bucket_id].append(idx)
 
             if len(buckets[bucket_id]) == self.batch_size:
@@ -78,24 +82,6 @@ class OrderedDistributedSampler(Sampler):
         return self.num_samples
 
 
-def custom_collate_fn(batch):
-    y = torch.stack([b[1] for b in batch])
-    y_aux = torch.stack([b[2] for b in batch])
-
-    #     print([b[0].size(-1) for b in batch])
-    max_w = np.max([b[0].size(2) for b in batch])
-    max_h = np.max([b[0].size(1) for b in batch])
-
-    size = (len(batch), batch[0][0].size(0), max_h, max_w)
-    x = torch.zeros(size, device=y.device)
-
-    for i, b in enumerate(batch):
-        mid = (max_w - b[0].size(-1)) // 2
-        x[i, :, : b[0].size(1), mid: mid + b[0].size(2)] = b[0]
-
-    return x, y, y_aux
-
-
 def define_loaders(
     train_dataset,
     val_dataset,
@@ -108,11 +94,10 @@ def define_loaders(
 ):
     """
     Builds data loaders.
-    TODO
 
     Args:
-        train_dataset (BCCDataset): Dataset to train with.
-        val_dataset (BCCDataset): Dataset to validate with.
+        train_dataset (torch Dataset): Dataset to train with.
+        val_dataset (torch Dataset): Dataset to validate with.
         batch_size (int, optional): Training batch size. Defaults to 32.
         val_bs (int, optional): Validation batch size. Defaults to 32.
         use_len_sampler (bool, optional): Whether to use len sampler. Defaults to False.
@@ -139,10 +124,11 @@ def define_loaders(
         )
 
     if use_len_sampler:
+        if not distributed:
+            sampler = RandomSampler(train_dataset)
+
         len_sampler = LenMatchBatchSampler(
-            RandomSampler(train_dataset),
-            batch_size=batch_size,
-            drop_last=True,
+            sampler, batch_size=batch_size, drop_last=True,
         )
         train_loader = DataLoader(
             train_dataset,

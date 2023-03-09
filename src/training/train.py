@@ -2,16 +2,31 @@ import gc
 import time
 import torch
 import numpy as np
-from sklearn.metrics import roc_auc_score, accuracy_score
+from tqdm import tqdm
 from transformers import get_linear_schedule_with_warmup
 
 from data.loader import define_loaders
-from training.losses import BreastLoss
+from training.losses import SignLoss
 from training.optim import define_optimizer
 
-from training.mix import cutmix_data, Mixup
-from utils.metrics import tweak_thresholds
+from utils.metrics import accuracy
 from utils.torch import sync_across_gpus
+
+
+def trim_tensors(data, min_len=10):
+    """
+    Trim tensors so that within a batch, padding is shortened.
+    This speeds up training for RNNs and Transformers.
+
+    Args:
+        data (dict of torch tensors): Batch.
+        min_len (int, optional): Minimum trimming size. Defaults to 10.
+    Returns:
+        dict of torch tensors: Trimmed tensors.
+    """
+    max_len = (data["type"][:, :, 0] != 0).sum(1).max()
+    max_len = max(max_len, min_len)
+    return {k: data[k][:, :max_len].contiguous() for k in data.keys()}
 
 
 def evaluate(
@@ -47,12 +62,14 @@ def evaluate(
     preds, preds_aux = [], []
 
     with torch.no_grad():
-        for x, y, y_aux in val_loader:
+        for data in val_loader:
+            for k in data.keys():
+                data[k] = data[k].cuda()
+#             data = trim_tensors(data)
+
             with torch.cuda.amp.autocast(enabled=use_fp16):
-                y_pred, y_pred_aux = model(x.cuda())
-                loss = loss_fct(
-                    y_pred.detach(), y_pred_aux.detach(), y.cuda(), y_aux.cuda()
-                )
+                y_pred, y_pred_aux = model(data)
+                loss = loss_fct(y_pred.detach(), y_pred_aux.detach(), data['target'], 0)
 
             val_losses.append(loss.detach())
 
@@ -131,26 +148,18 @@ def fit(
         betas=optimizer_config["betas"],
     )
 
-    loss_fct = BreastLoss(loss_config)
+    loss_fct = SignLoss(loss_config)
 
     train_loader, val_loader = define_loaders(
         train_dataset,
         val_dataset,
         batch_size=data_config["batch_size"],
         val_bs=data_config["val_bs"],
-        use_weighted_sampler=data_config["use_weighted_sampler"],
-        use_balanced_sampler=data_config["use_balanced_sampler"],
         use_len_sampler=data_config["use_len_sampler"],
-        use_custom_collate=data_config["use_custom_collate"],
         distributed=distributed,
         world_size=world_size,
         local_rank=local_rank,
     )
-
-    if data_config["mix"] == "cutmix":
-        mix = cutmix_data  # TODO : use class
-    else:
-        mix = Mixup(data_config["mix_alpha"], data_config["additive_mix"])
 
     # LR Scheduler
     num_training_steps = epochs * len(train_loader)
@@ -160,20 +169,24 @@ def fit(
     )
 
     step = 1
-    pf1, auc, acc = 0, 0, 0
+    acc = 0
     avg_losses = []
     start_time = time.time()
     for epoch in range(1, epochs + 1):
         if distributed:
-            train_loader.sampler.set_epoch(epoch)
+            try:
+                train_loader.sampler.set_epoch(epoch)
+            except AttributeError:
+                train_loader.batch_sampler.sampler.set_epoch(epoch)
 
-        for x, y, y_aux in train_loader:
-            if np.random.random() < data_config["mix_proba"]:
-                x, y, y_aux = mix(x, y, y_aux)
+        for data in train_loader:
+            for k in data.keys():
+                data[k] = data[k].cuda()
+#             data = trim_tensors(data)
 
             with torch.cuda.amp.autocast(enabled=use_fp16):
-                y_pred, y_pred_aux = model(x.cuda())
-                loss = loss_fct(y_pred, y_pred_aux, y.cuda(), y_aux.cuda())
+                y_pred, y_pred_aux = model(data)
+                loss = loss_fct(y_pred, y_pred_aux, data['target'], 0)
 
             scaler.scale(loss).backward()
             avg_losses.append(loss.detach())
@@ -220,26 +233,7 @@ def fit(
 
                 if local_rank == 0:
                     preds = preds[: len(val_dataset)]
-                    preds_aux = preds_aux[: len(val_dataset)]
-                    num_classes = preds.shape[-1] if len(preds.shape) > 1 else 1
-                    try:
-                        if num_classes == 1:
-                            val_dataset.df["pred"] = preds.flatten()
-                        elif num_classes == 2:
-                            val_dataset.df["pred"] = preds[:, 1].flatten()
-                        dfg = (
-                            val_dataset.df[
-                                ["patient_id", "laterality", "pred", "cancer"]
-                            ]
-                            .groupby(["patient_id", "laterality"])
-                            .mean()
-                        )
-                        _, _, pf1 = tweak_thresholds(
-                            dfg["cancer"].values, dfg["pred"].values
-                        )
-                        auc = roc_auc_score(dfg["cancer"].values, dfg["pred"].values)
-                    except Exception:  # Pretraining
-                        acc = accuracy_score(val_dataset.targets, preds.argmax(-1))
+                    acc = accuracy(val_dataset.targets, preds.argmax(-1))
 
                     dt = time.time() - start_time
                     lr = scheduler.get_last_lr()[0]
@@ -248,8 +242,6 @@ def fit(
                     s = f"Epoch {epoch:02d}/{epochs:02d} (step {step_:04d}) \t"
                     s = s + f"lr={lr:.1e} \t t={dt:.0f}s  \t loss={avg_loss:.3f}"
                     s = s + f"\t val_loss={avg_val_loss:.3f}" if avg_val_loss else s
-                    s = s + f"    pf1={pf1:.3f}" if pf1 else s
-                    s = s + f"    auc={auc:.3f}" if auc else s
                     s = s + f"    acc={acc:.3f}" if acc else s
 
                     print(s)
@@ -259,8 +251,7 @@ def fit(
                     run[f"fold_{fold}/train/loss"].log(avg_loss, step=step_)
                     run[f"fold_{fold}/train/lr"].log(lr, step=step_)
                     run[f"fold_{fold}/val/loss"].log(avg_val_loss, step=step_)
-                    run[f"fold_{fold}/val/pf1"].log(pf1, step=step_)
-                    run[f"fold_{fold}/val/auc"].log(auc, step=step_)
+                    run[f"fold_{fold}/val/acc"].log(acc, step=step_)
 
                 start_time = time.time()
                 avg_losses = []

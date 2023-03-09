@@ -4,24 +4,16 @@ import glob
 import torch
 import numpy as np
 import pandas as pd
-from sklearn.metrics import roc_auc_score
 from torch.nn.parallel import DistributedDataParallel
 
 from params import DATA_PATH
 from training.train import fit
 from model_zoo.models import define_model
 
-from data.dataset import BreastDataset
-from data.transforms import get_transfos
-from data.preparation import (
-    prepare_cbis_data,
-    prepare_cmmd_data,
-    prepare_pasm_data,
-    prepare_pl_data
-)
+from data.dataset import SignDataset
 
 from utils.torch import seed_everything, count_parameters, save_model_weights
-from utils.metrics import tweak_thresholds
+from utils.metrics import accuracy
 
 
 def train(config, df_train, df_val, fold, log_folder=None, run=None):
@@ -39,19 +31,16 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
     Returns:
         np array [len(df_train) x num_classes]: Validation predictions.
     """
-    crop = "crops" in config.img_folder
-
-    dataset_cls = BreastCropDataset if crop else BreastDataset
-
-    train_dataset = dataset_cls(
+    train_dataset = SignDataset(
         df_train,
-        transforms=get_transfos(resize=config.resize, strength=config.aug_strength),
-        sampler_weights=config.data_config["sampler_weights"],
+        max_len=config.max_len,
+        train=True,
     )
 
-    val_dataset = dataset_cls(
+    val_dataset = SignDataset(
         df_val,
-        transforms=get_transfos(augment=False, resize=config.resize),
+        max_len=config.max_len,
+        train=False,
     )
 
     if config.pretrained_weights is not None:
@@ -66,16 +55,13 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
 
     model = define_model(
         config.name,
-        num_classes=config.num_classes,
-        num_classes_aux=config.num_classes_aux,
-        n_channels=config.n_channels,
         pretrained_weights=pretrained_weights,
+        embed_dim=config.embed_dim,
+        transfo_dim=config.transfo_dim,
+        transfo_heads=config.transfo_heads,
         drop_rate=config.drop_rate,
-        drop_path_rate=config.drop_path_rate,
-        use_gem=config.use_gem,
-        reduce_stride=config.reduce_stride,
+        num_classes=config.num_classes,
         verbose=(config.local_rank == 0),
-        crop=crop,
     ).cuda()
 
     if config.distributed:
@@ -115,7 +101,6 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
         config.optimizer_config,
         epochs=config.epochs,
         verbose_eval=config.verbose_eval,
-        device=config.device,
         use_fp16=config.use_fp16,
         distributed=config.distributed,
         local_rank=config.local_rank,
@@ -139,7 +124,8 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
 
 
 def k_fold(config, df, df_extra=None, log_folder=None, run=None):
-    """_summary_
+    """
+    Trains a k-fold.
 
     Args:
         config (Config): Parameters.
@@ -153,7 +139,7 @@ def k_fold(config, df, df_extra=None, log_folder=None, run=None):
     """
     if "fold" not in df.columns:
         folds = pd.read_csv(config.folds_file)
-        df = df.merge(folds, how="left", on=["patient_id", "image_id"])
+        df = df.merge(folds, how="left", on=["participant_id", "sequence_id"])
 
     pred_oof = np.zeros((len(df), config.num_classes))
     for fold in range(config.k):
@@ -170,24 +156,9 @@ def k_fold(config, df, df_extra=None, log_folder=None, run=None):
             val_idx = list(df[df["fold"] == fold].index)
 
             df_train = df.iloc[train_idx].copy().reset_index(drop=True)
-
-            if config.use_cbis:
-                df_cbis = prepare_cbis_data(DATA_PATH, "cbis_" + config.img_folder)
-                df_train = pd.concat([df_train, df_cbis], ignore_index=True)
-
-            if config.use_cmmd:
-                df_cbis = prepare_cmmd_data(DATA_PATH, "cmmd_" + config.img_folder)
-                df_train = pd.concat([df_train, df_cbis], ignore_index=True)
-
-            if config.use_pasm:
-                df_pasm = prepare_pasm_data(DATA_PATH, "pasm_" + config.img_folder)
-                df_train = pd.concat([df_train, df_pasm], ignore_index=True)
-
-            if config.use_pl:
-                df_pl = prepare_pl_data(DATA_PATH, "vindr_" + config.img_folder, fold=fold)
-                df_train = pd.concat([df_train, df_pl], ignore_index=True)
-
             df_val = df.iloc[val_idx].copy().reset_index(drop=True)
+            
+#             df_train = df_val.copy()
 
             pred_val = train(
                 config, df_train, df_val, fold, log_folder=log_folder, run=run
@@ -207,20 +178,8 @@ def k_fold(config, df, df_extra=None, log_folder=None, run=None):
                     )
 
     if config.selected_folds == list(range(config.k)) and (config.local_rank == 0):
-        if config.num_classes == 1:
-            df["pred"] = pred_oof.flatten()
-        elif config.num_classes == 2:
-            df["pred"] = pred_oof[:, 1].flatten()
-
-        dfg = (
-            df[["patient_id", "laterality", "pred", "cancer"]]
-            .groupby(["patient_id", "laterality"])
-            .mean()
-        )
-        _, _, pf1 = tweak_thresholds(dfg["cancer"].values, dfg["pred"].values)
-        auc = roc_auc_score(dfg["cancer"].values, dfg["pred"].values)
-
-        print(f"\n\n -> CV pF1 : {pf1:.4f}")
+        acc = accuracy(df["target"].values, pred_oof)
+        print(f"\n\n -> CV Accuracy : {acc:.4f}")
 
         if log_folder is not None:
             folds.to_csv(log_folder + "folds.csv", index=False)
@@ -230,8 +189,7 @@ def k_fold(config, df, df_extra=None, log_folder=None, run=None):
             if run is not None:
                 run["global/logs"].upload(log_folder + "logs.txt")
                 run["global/pred_oof"].upload(log_folder + "pred_oof.npy")
-                run["global/cv"] = pf1
-                run["global/auc"] = auc
+                run["global/cv"] = acc
 
     if config.fullfit:
         for ff in range(config.n_fullfit):
@@ -242,19 +200,6 @@ def k_fold(config, df, df_extra=None, log_folder=None, run=None):
             seed_everything(config.seed + ff)
 
             df_train = df.copy()
-
-            if config.use_cbis:
-                df_cbis = prepare_cbis_data(DATA_PATH, "cbis_" + config.img_folder)
-                df_train = pd.concat([df_train, df_cbis], ignore_index=True)
-            if config.use_cmmd:
-                df_cbis = prepare_cmmd_data(DATA_PATH, "cmmd_" + config.img_folder)
-                df_train = pd.concat([df_train, df_cbis], ignore_index=True)
-            if config.use_pasm:
-                df_pasm = prepare_pasm_data(DATA_PATH, "pasm_" + config.img_folder)
-                df_train = pd.concat([df_train, df_pasm], ignore_index=True)
-            if config.use_pl:
-                df_pl = prepare_pl_data(DATA_PATH, "vindr_" + config.img_folder, fold="fullfit")
-                df_train = pd.concat([df_train, df_pl], ignore_index=True)
 
             train(
                 config,

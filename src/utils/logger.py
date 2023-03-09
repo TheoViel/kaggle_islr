@@ -4,10 +4,11 @@ import sys
 import math
 import json
 import shutil
+import neptune
 import datetime
 import subprocess
 import numpy as np
-import neptune.new as neptune
+
 from params import NEPTUNE_PROJECT
 
 

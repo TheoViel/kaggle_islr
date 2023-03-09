@@ -40,7 +40,7 @@ class SmoothCrossEntropyLoss(nn.Module):
         return loss.mean()
 
 
-class BreastLoss(nn.Module):
+class SignLoss(nn.Module):
     def __init__(self, config, device="cuda"):
         super().__init__()
         self.config = config
@@ -49,14 +49,9 @@ class BreastLoss(nn.Module):
         self.aux_loss_weight = config["aux_loss_weight"]
 
         self.eps = config.get("smoothing", 0)
-        pos_weight = (
-            torch.tensor([config["pos_weight"]]).to(device)
-            if config["pos_weight"] is not None
-            else None
-        )
 
         if config["name"] == "bce":
-            self.loss = nn.BCEWithLogitsLoss(pos_weight=pos_weight, reduction="mean")
+            self.loss = nn.BCEWithLogitsLoss(reduction="mean")
         elif config["name"] == "ce":
             self.loss = SmoothCrossEntropyLoss(eps=self.eps)
 

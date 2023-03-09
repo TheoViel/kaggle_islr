@@ -1,19 +1,37 @@
 import re
-import cv2
 import torch
 import numpy as np
 from torch.utils.data import Dataset
 
+from data.transforms import augment
 
-class BreastDataset(Dataset):
+
+def crop_or_pad(data, max_len=100):
+    diff = max_len - data['x'].shape[0]
+    
+    if diff <= 0:  # Crop
+        return {k : data[k][:max_len] for k in data.keys()}
+
+    padding = torch.ones((diff, data['x'].shape[1]))
+    
+    padded = {}
+    for k in data.keys():
+        coef = -10 if k in ['x', 'y', 'z'] else 0
+        padded[k] = torch.cat([data[k], coef * padding], axis=0).type(data[k].type())
+        
+    return padded
+
+
+class SignDataset(Dataset):
     """
-    Image torch Dataset.
+    Sign torch Dataset.
     """
 
     def __init__(
         self,
         df,
-        transforms=None,
+        max_len=None,
+        train=False,
     ):
         """
         Constructor
@@ -23,10 +41,10 @@ class BreastDataset(Dataset):
             transforms (albumentation transforms, optional): Transforms to apply. Defaults to None.
         """
         self.df = df
-        self.paths = df["path"].values
-        self.transforms = transforms
-        self.targets = df["cancer"].values
-        self.targets_aux = df["BIRADS"].values
+        self.paths = df["processed_path"].values
+        self.targets = df["target"].values
+        self.max_len = max_len
+        self.train = train
 
     def __len__(self):
         return len(self.paths)
@@ -43,32 +61,26 @@ class BreastDataset(Dataset):
             torch tensor [1]: Label.
             torch tensor [1]: Aux label.
         """
-        image = cv2.imread(self.paths[idx], cv2.IMREAD_ANYDEPTH)
-        if image.dtype == np.uint16:
-            image = image.astype(np.float32) / 65535.0
-        else:
-            image = image.astype(np.float32) / 255.0
+        frames = np.load(self.paths[idx])
+        
+        landmark_embed = np.arange(frames.shape[-1])[None] + 1
+        landmark_embed = np.repeat(landmark_embed, frames.shape[0], axis=0)        
+        
+        data = {
+            "type": torch.tensor(frames[:, 0], dtype=torch.long),
+            "landmark": torch.tensor(landmark_embed, dtype=torch.long),
+            "x": torch.tensor(frames[:, 1], dtype=torch.float),
+            "y": torch.tensor(frames[:, 2], dtype=torch.float),
+            "z": torch.tensor(frames[:, 3], dtype=torch.float),
+        }
+        data["mask"] = torch.where(data["x"].clone() == -10, 1, 1)  # .bool()
 
-        if self.transforms:
-            image = self.transforms(image=image)["image"]
+        if self.train:
+            data = augment(data)
 
-        if len(image.size()) == 2:
-            image = torch.stack([image, image, image], 0)
-        elif image.size(0) == 1:
-            image = torch.cat([image, image, image], 0)
+        if self.max_len is not None:
+            data = crop_or_pad(data, max_len=self.max_len)
+        
+        data["target"] = torch.tensor([self.targets[idx]], dtype=torch.float)
 
-        y = torch.tensor([self.targets[idx]], dtype=torch.float)
-        y_aux = torch.tensor([self.targets_aux[idx]], dtype=torch.float)
-
-        return image, y, y_aux
-
-
-def get_size(config):
-    x = re.sub("[a-z]+", "", config.img_folder.lower()[:-1])
-    x = re.sub("_", " ", x)
-    x = re.sub(r"\s+", " ", x).strip().split()
-    x = tuple(map(int, x))
-
-    if len(x) == 1:
-        x = (x[0], x[0])
-    return x
+        return data

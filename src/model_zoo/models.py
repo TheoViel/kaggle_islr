@@ -1,108 +1,97 @@
-import timm
 import torch
 import torch.nn as nn
+from transformers import AutoConfig
+from transformers.models.bert.modeling_bert import BertEncoder
+from transformers.models.deberta_v2.modeling_deberta_v2 import DebertaV2Encoder
 
-from model_zoo.gem import GeM
-from model_zoo.pad_conv import replace_conv2d_same
-
+# from model_zoo.gem import GeM
 from utils.torch import load_model_weights
 
 
 def define_model(
     name,
-    num_classes=1,
-    num_classes_aux=0,
-    n_channels=1,
-    pretrained_weights="",
-    pretrained=True,
-    reduce_stride=False,
+    embed_dim=256,
+    transfo_dim=768,
+    transfo_heads=1,
     drop_rate=0,
-    drop_path_rate=0,
-    use_gem=False,
+    num_classes=250,
+    pretrained_weights="",
     verbose=1,
-    replace_pad_conv=False,
 ):
     """
-    Loads a pretrained model & builds the architecture.
-    Supports timm models.
+    Builds the architecture.
+    TODO
 
     Args:
         name (str): Model name
         num_classes (int, optional): Number of classes. Defaults to 1.
-        num_classes_aux (int, optional): Number of aux classes. Defaults to 0.
-        n_channels (int, optional): Number of image channels. Defaults to 3.
-        pretrained_weights (str, optional): Path to pretrained encoder weights. Defaults to ''.
         pretrained (bool, optional): Whether to load timm pretrained weights.
-        reduce_stride (bool, optional): Whether to reduce first layer stride. Defaults to False.
-        drop_rate (float, optional): Dropout of the last layer. Defaults to 0.
-        drop_path_rate (float, optional): Drop path rate, if supported. Defaults to 0.
-        use_gem (bool, optional): Whether to use GeM pooling. Defaults to False.
         verbose (int, optional): Whether to display infos. Defaults to 1.
-        replace_pad_conv (bool, optional): Whether to replace padded effnet conv. Defaults to False.
 
     Returns:
-        ClsModel: Model.
+        torch Module: Model.
     """
-    # Load pretrained model
-    if drop_path_rate > 0:
-        encoder = timm.create_model(
-            name,
-            pretrained=pretrained,
-            drop_path_rate=drop_path_rate,
-            num_classes=0,
-            global_pool='',
+
+    if name == "bi_transfo":
+        model = SignBiTransformer(
+            embed_dim=embed_dim,
+            transfo_dim=transfo_dim,
+            transfo_heads=transfo_heads,
+            num_classes=num_classes,
+            drop_rate=drop_rate,
+        )
+    elif name == "multi_transfo":
+        model = SignMultiTransformer(
+            embed_dim=embed_dim,
+            transfo_dim=transfo_dim,
+            transfo_heads=transfo_heads,
+            num_classes=num_classes,
+            drop_rate=drop_rate,
+        )
+    elif name == "transfo_deberta":
+        model = SignTransformerDeberta(
+            embed_dim=embed_dim,
+            transfo_dim=transfo_dim,
+            transfo_heads=transfo_heads,
+            num_classes=num_classes,
+            drop_rate=drop_rate,
+        )
+    elif name == "bert_deberta":
+        model = SignBertDeberta(
+            embed_dim=embed_dim,
+            transfo_dim=transfo_dim,
+            transfo_heads=transfo_heads,
+            num_classes=num_classes,
+            drop_rate=drop_rate,
         )
     else:
-        encoder = timm.create_model(
-            name,
-            pretrained=pretrained,
-            num_classes=0,
-            global_pool='',
-        )
-    encoder.name = name
-
-    model = ClsModel(
-        encoder,
-        num_classes=num_classes,
-        num_classes_aux=num_classes_aux,
-        n_channels=n_channels,
-        drop_rate=drop_rate,
-        use_gem=use_gem,
-    )
+        raise NotImplementedError
 
     if pretrained_weights:
         model = load_model_weights(
             model, pretrained_weights, verbose=verbose, strict=False
         )
 
-    if reduce_stride:
-        model.reduce_stride()
-
-    if replace_pad_conv and "efficient" in name:
-        if verbose:
-            print('Replacing Conv2dSame layers\n')
-        model = replace_conv2d_same(model, verbose=0)
-
     return model
 
 
-class ClsModel(nn.Module):
+class SignBertDeberta(nn.Module):
     """
     Model with an attention mechanism.
     """
-
+    def update_config(self, config):
+        pass
+        
     def __init__(
         self,
-        encoder,
-        num_classes=1,
-        num_classes_aux=0,
-        n_channels=3,
+        embed_dim=256,
+        transfo_dim=768,
+        transfo_heads=1,
+        num_classes=250,
         drop_rate=0,
-        use_gem=False,
     ):
         """
         Constructor.
-        TODO
 
         Args:
             encoder (timm model): Encoder.
@@ -111,88 +100,42 @@ class ClsModel(nn.Module):
             n_channels (int, optional): Number of image channels. Defaults to 3.
         """
         super().__init__()
-
-        self.encoder = encoder
-        self.nb_ft = encoder.num_features
-
         self.num_classes = num_classes
-        self.num_classes_aux = num_classes_aux
-        self.n_channels = n_channels
-        self.use_gem = use_gem
+        self.num_classes_aux = 0
+        self.transfo_heads = transfo_heads
 
-        self.global_pool = GeM(p_trainable=False)
-        self.dropout = nn.Dropout(drop_rate) if drop_rate else nn.Identity()
+        self.type_embed = nn.Embedding(12, embed_dim, padding_idx=0)
+        self.landmark_embed = nn.Embedding(127, embed_dim, padding_idx=0)
+        
+        self.type_norm = nn.LayerNorm(embed_dim)
+        self.landmark_norm = nn.LayerNorm(embed_dim)
+        
+        self.pos_dense = nn.Linear(3, embed_dim)
 
-        self.logits = nn.Linear(self.nb_ft, num_classes)
-        if self.num_classes_aux:
-            self.logits_aux = nn.Linear(self.nb_ft, num_classes_aux)
+        name = "bert-base-uncased"
+        config = AutoConfig.from_pretrained(name, output_hidden_states=True)
+        config.hidden_size = transfo_dim
+        config.intermediate_size = transfo_dim * 2
+        config.num_hidden_layers = 4
+        config.num_attention_heads = transfo_heads
+        config.attention_probs_dropout_prob = drop_rate
+        config.hidden_dropout_prob = drop_rate
 
-        self._update_num_channels()
+        self.landmark_transformer = BertEncoder(config)
+        
+        name = "microsoft/deberta-v3-base"
+        config = AutoConfig.from_pretrained(name, output_hidden_states=True)
+        config.hidden_size = transfo_dim
+        config.intermediate_size = transfo_dim * 2
+        config.num_hidden_layers = 4
+        config.num_attention_heads = transfo_heads
+        config.attention_probs_dropout_prob = drop_rate
+        config.hidden_dropout_prob = drop_rate
+        config.max_relative_positions = 100
 
-    def _update_num_channels(self):
-        if self.n_channels != 3:
-            for n, m in self.encoder.named_modules():
-                if n:
-                    # print("Replacing", n)
-                    old_conv = getattr(self.encoder, n)
-                    new_conv = nn.Conv2d(
-                        self.n_channels,
-                        old_conv.out_channels,
-                        kernel_size=old_conv.kernel_size,
-                        stride=old_conv.stride,
-                        padding=old_conv.padding,
-                        bias=old_conv.bias is not None,
-                    )
-                    setattr(self.encoder, n, new_conv)
-                    break
+        self.frame_transformer = DebertaV2Encoder(config)
 
-    def reduce_stride(self):
-        if "efficient" in self.encoder.name:
-            self.encoder.conv_stem.stride = (1, 1)
-        elif "nfnet" in self.encoder.name:
-            self.encoder.stem.conv1.stride = (1, 1)
-        else:
-            raise NotImplementedError
-
-    def extract_features(self, x):
-        """
-        Extract features function.
-
-        Args:
-            x (torch tensor [batch_size x c x h x w]): Input batch.
-
-        Returns:
-            torch tensor [batch_size x num_features]: Features.
-        """
-        fts = self.encoder(x)
-
-        if self.use_gem:
-            fts = self.global_pool(fts)[:, :, 0, 0]
-        else:
-            while len(fts.size()) > 2:
-                fts = fts.mean(-1)
-
-        return fts
-
-    def get_logits(self, fts):
-        """
-        Computes logits.
-
-        Args:
-            fts (torch tensor [batch_size x num_features]): Features.
-
-        Returns:
-            torch tensor [batch_size x num_classes]: logits.
-            torch tensor [batch_size x num_classes_aux]: logits aux.
-        """
-        logits = self.logits(fts)
-
-        if self.num_classes_aux:
-            logits_aux = self.logits_aux(fts)
-        else:
-            logits_aux = torch.zeros((fts.size(0)))
-
-        return logits, logits_aux
+        self.logits = nn.Linear(transfo_dim , num_classes)
 
     def forward(self, x, return_fts=False):
         """
@@ -207,13 +150,322 @@ class ClsModel(nn.Module):
             torch tensor [batch_size x num_classes_aux]: logits aux.
             torch tensor [batch_size x num_features]: Encoder features, if return_fts.
         """
-        fts = self.extract_features(x)
+        x_type = self.type_norm(self.type_embed(x['type']))
+        x_landmark = self.landmark_norm(self.landmark_embed(x['landmark']))
+        x_pos = self.pos_dense(torch.stack([x['x'], x['y'], x['z']], -1))
+       
+        fts = torch.cat([x_type, x_landmark, x_pos], -1)
 
-        fts = self.dropout(fts)
+        bs, n_frames, n_landmarks, _ = fts.size()
+        fts = fts.view(bs * n_frames, n_landmarks, -1)
 
-        logits, logits_aux = self.get_logits(fts)
+        fts = self.landmark_transformer(fts).last_hidden_state
+        fts = fts.view(bs, n_frames, n_landmarks, -1)
+        fts = fts.mean(2)
 
-        if return_fts:
-            return logits, logits_aux, fts
+#         hidden_states = self.frame_transformer(fts, x['mask'][:, :, 0]).hidden_states
+#         fts = torch.cat(hidden_states[::-1], -1)
+        fts = self.frame_transformer(fts, x['mask'][:, :, 0]).last_hidden_state
+        
+#         print(fts.size())
+        fts = fts.view(bs, n_frames, -1)
+        fts = fts.mean(1)
 
-        return logits, logits_aux
+#         print(fts.size())
+        
+        logits = self.logits(fts)
+
+        return logits, torch.zeros(1)
+
+
+class SignTransformerDeberta(nn.Module):
+    """
+    Model with an attention mechanism.
+    """
+    def __init__(
+        self,
+        embed_dim=256,
+        transfo_dim=768,
+        transfo_heads=1,
+        num_classes=250,
+        drop_rate=0,
+    ):
+        """
+        Constructor.
+
+        Args:
+            encoder (timm model): Encoder.
+            num_classes (int, optional): Number of classes. Defaults to 1.
+            num_classes_aux (int, optional): Number of aux classes. Defaults to 0.
+            n_channels (int, optional): Number of image channels. Defaults to 3.
+        """
+        super().__init__()
+        self.num_classes = num_classes
+        self.num_classes_aux = 0
+        self.transfo_heads = transfo_heads
+
+        self.type_embed = nn.Embedding(12, embed_dim, padding_idx=0)
+        self.landmark_embed = nn.Embedding(127, embed_dim, padding_idx=0)
+        
+        self.type_norm = nn.LayerNorm(embed_dim)
+        self.landmark_norm = nn.LayerNorm(embed_dim)
+        
+        self.pos_dense = nn.Linear(3, embed_dim)
+        nb_fts = embed_dim * 3
+        
+        self.landmark_transformer = nn.TransformerEncoderLayer(
+            nb_fts,
+            nhead=transfo_heads,
+            dim_feedforward=transfo_dim,
+            dropout=drop_rate,
+            batch_first=True
+        )
+        
+        name = "microsoft/deberta-v3-base"
+        config = AutoConfig.from_pretrained(name, output_hidden_states=True)
+        config.hidden_size = transfo_dim
+        config.intermediate_size = transfo_dim * 4
+        config.num_hidden_layers = 1
+        config.num_attention_heads = transfo_heads
+        config.attention_probs_dropout_prob = drop_rate
+        config.hidden_dropout_prob = drop_rate
+        config.max_relative_positions = 100
+
+        self.frame_transformer = DebertaV2Encoder(config)
+
+        self.logits = nn.Linear(nb_fts , num_classes)
+
+    def forward(self, x, return_fts=False):
+        """
+        Forward function.
+
+        Args:
+            x (torch tensor [batch_size x c x h x w]): Input batch.
+            return_fts (bool, Optional): Whether to return encoder features.
+
+        Returns:
+            torch tensor [batch_size x num_classes]: logits.
+            torch tensor [batch_size x num_classes_aux]: logits aux.
+            torch tensor [batch_size x num_features]: Encoder features, if return_fts.
+        """
+        x_type = self.type_norm(self.type_embed(x['type']))
+        x_landmark = self.landmark_norm(self.landmark_embed(x['landmark']))
+        x_pos = self.pos_dense(torch.stack([x['x'], x['y'], x['z']], -1))
+       
+        fts = torch.cat([x_type, x_landmark, x_pos], -1)
+
+        bs, n_frames, n_landmarks, nb_fts = fts.size()
+        fts = fts.view(bs * n_frames, n_landmarks, -1)
+
+        fts = self.landmark_transformer(fts)  # , src_mask=mask)
+        fts = fts.view(bs, n_frames, n_landmarks, -1)
+        fts = fts.mean(2)
+        
+#         hidden_states = self.frame_transformer(fts, x['mask'][:, :, 0]).hidden_states
+#         fts = torch.cat(hidden_states[::-1], -1)
+        fts = self.frame_transformer(fts, x['mask'][:, :, 0]).last_hidden_state
+        
+#         print(fts.size())
+        fts = fts.view(bs, n_frames, -1)
+        fts = fts.mean(1)
+
+#         print(fts.size())
+        
+        logits = self.logits(fts)
+
+        return logits, torch.zeros(1)
+
+
+class SignBiTransformer(nn.Module):
+    """
+    Model with an attention mechanism.
+    """
+    def __init__(
+        self,
+        embed_dim=256,
+        transfo_dim=768,
+        transfo_heads=1,
+        num_classes=250,
+        drop_rate=0,
+    ):
+        """
+        Constructor.
+
+        Args:
+            encoder (timm model): Encoder.
+            num_classes (int, optional): Number of classes. Defaults to 1.
+            num_classes_aux (int, optional): Number of aux classes. Defaults to 0.
+            n_channels (int, optional): Number of image channels. Defaults to 3.
+        """
+        super().__init__()
+        self.num_classes = num_classes
+        self.num_classes_aux = 0
+        self.transfo_heads = transfo_heads
+
+        self.type_embed = nn.Embedding(12, embed_dim, padding_idx=0)
+        self.landmark_embed = nn.Embedding(127, embed_dim, padding_idx=0)
+        
+        self.type_norm = nn.LayerNorm(embed_dim)
+        self.landmark_norm = nn.LayerNorm(embed_dim)
+        
+        self.pos_dense = nn.Linear(3, embed_dim)
+        nb_fts = embed_dim * 3
+        
+        self.landmark_transformer = nn.TransformerEncoderLayer(
+            nb_fts,
+            nhead=transfo_heads,
+            dim_feedforward=transfo_dim,
+            dropout=drop_rate,
+            batch_first=True
+        )
+
+        self.frame_transformer = nn.TransformerEncoderLayer(
+            nb_fts,
+            nhead=transfo_heads,
+            dim_feedforward=transfo_dim,
+            dropout=drop_rate,
+            batch_first=True
+        )
+
+        self.logits = nn.Linear(nb_fts , num_classes)
+
+    def forward(self, x, return_fts=False):
+        """
+        Forward function.
+
+        Args:
+            x (torch tensor [batch_size x c x h x w]): Input batch.
+            return_fts (bool, Optional): Whether to return encoder features.
+
+        Returns:
+            torch tensor [batch_size x num_classes]: logits.
+            torch tensor [batch_size x num_classes_aux]: logits aux.
+            torch tensor [batch_size x num_features]: Encoder features, if return_fts.
+        """
+        x_type = self.type_norm(self.type_embed(x['type']))
+        x_landmark = self.landmark_norm(self.landmark_embed(x['landmark']))
+        x_pos = self.pos_dense(torch.stack([x['x'], x['y'], x['z']], -1))
+       
+        fts = torch.cat([x_type, x_landmark, x_pos], -1)
+
+        bs, n_frames, n_landmarks, nb_fts = fts.size()
+        fts = fts.view(bs * n_frames, n_landmarks, -1)
+
+#         mask = x['mask'].view(bs * n_frames, 1, n_landmarks, 1).repeat(1, self.transfo_heads, 1, n_landmarks)
+#         mask = mask.view(bs * n_frames * self.transfo_heads, n_landmarks, n_landmarks)
+#         mask = None
+
+        fts = self.landmark_transformer(fts)  # , src_mask=mask)
+        fts = fts.view(bs, n_frames, n_landmarks, -1)
+        fts = fts.mean(2)
+
+#         mask = (x['mask'].unsqueeze(-1)).repeat(1, 1, 1, fts.size(-1))
+#         fts = fts.masked_fill_(mask, 0)
+        
+        fts = self.frame_transformer(fts)
+        fts = fts.view(bs, n_frames, -1)
+        fts = fts.mean(1)
+
+#         print(fts.size())
+        
+        logits = self.logits(fts)
+
+        return logits, torch.zeros(1)
+
+    
+class SignMultiTransformer(nn.Module):
+    """
+    Model with an attention mechanism.
+    """
+    def __init__(
+        self,
+        embed_dim=256,
+        transfo_dim=768,
+        transfo_heads=1,
+        num_classes=250,
+        n_transfos=2,
+        drop_rate=0,
+    ):
+        """
+        Constructor.
+
+        Args:
+            encoder (timm model): Encoder.
+            num_classes (int, optional): Number of classes. Defaults to 1.
+            num_classes_aux (int, optional): Number of aux classes. Defaults to 0.
+            n_channels (int, optional): Number of image channels. Defaults to 3.
+        """
+        super().__init__()
+        self.num_classes = num_classes
+        self.num_classes_aux = 0
+        self.transfo_heads = transfo_heads
+        self.n_transfos = n_transfos
+
+        self.type_embed = nn.Embedding(12, embed_dim, padding_idx=0)
+        self.landmark_embed = nn.Embedding(127, embed_dim, padding_idx=0)
+        self.pos_dense = nn.Linear(3, embed_dim)
+        nb_fts = embed_dim * 3
+        
+        self.transformers_1 = []
+        self.transformers_2 = []
+        for _ in range(n_transfos):
+            self.transformers_1.append(
+                nn.TransformerEncoderLayer(
+                    nb_fts,
+                    nhead=transfo_heads,
+                    dim_feedforward=transfo_dim,
+                    dropout=drop_rate,
+                    batch_first=True
+                )
+            )
+            self.transformers_2.append(
+                nn.TransformerEncoderLayer(
+                    nb_fts,
+                    nhead=transfo_heads,
+                    dim_feedforward=transfo_dim,
+                    dropout=drop_rate,
+                    batch_first=True
+                )
+            )
+            
+        self.transformers_1 = nn.ModuleList(self.transformers_1)
+        self.transformers_2 = nn.ModuleList(self.transformers_2)
+
+        self.logits = nn.Linear(nb_fts , num_classes)
+
+    def forward(self, x, return_fts=False):
+        """
+        Forward function.
+
+        Args:
+            x (torch tensor [batch_size x c x h x w]): Input batch.
+            return_fts (bool, Optional): Whether to return encoder features.
+
+        Returns:
+            torch tensor [batch_size x num_classes]: logits.
+            torch tensor [batch_size x num_classes_aux]: logits aux.
+            torch tensor [batch_size x num_features]: Encoder features, if return_fts.
+        """
+        x_type = self.type_embed(x['type'])
+        x_landmark = self.landmark_embed(x['landmark'])
+        x_pos = self.pos_dense(torch.stack([x['x'], x['y'], x['z']], -1))
+       
+        fts = torch.cat([x_type, x_landmark, x_pos], -1)
+
+        bs, n_frames, n_landmarks, nb_fts = fts.size()
+        
+        for i in range(self.n_transfos):
+            fts = fts.view(bs * n_frames, n_landmarks, -1)
+            fts = self.transformers_1[i](fts)  # , src_mask=mask)
+            fts = fts.view(bs, n_frames, n_landmarks, -1)
+
+            fts = fts.transpose(1, 2).contiguous().view(bs * n_landmarks, n_frames, -1)
+
+            fts = self.transformers_2[i](fts)
+            fts = fts.view(bs, n_landmarks, n_frames, -1).transpose(1, 2).contiguous()
+        
+        fts = fts.mean(1).mean(1)
+        
+        logits = self.logits(fts)
+
+        return logits, torch.zeros(1)

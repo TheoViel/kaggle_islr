@@ -99,24 +99,25 @@ class Config:
     # Data
     processed_folder = "processed_3/"
     max_len = 50
+    aug_strength = 2
 
     # k-fold
     k = 4
     folds_file = f"../input/folds_{k}.csv"
-    selected_folds = [0, 1]
+    selected_folds = [0, 1, 2, 3]
 
     # Model
     name = "bert_deberta"
     pretrained_weights = None
     syncbn = False
     num_classes = 250
-    
+
     embed_dim = 128
-    transfo_dim = embed_dim * 3
+    transfo_dim = 3 * embed_dim
     transfo_heads = 8
     drop_rate = 0.1
 
-    # Training    
+    # Training
     loss_config = {
         "name": "ce",
         "smoothing": 0.1,
@@ -139,14 +140,14 @@ class Config:
         "max_grad_norm": 10.,
     }
 
-    epochs = 40
+    epochs = 30
 
     use_fp16 = True
 
     verbose = 1
     verbose_eval = 250
 
-    fullfit = False
+    fullfit = len(selected_folds) == 4
     n_fullfit = 1
 
 

@@ -214,3 +214,15 @@ def animate(sign, label):
     animation = FuncAnimation(fig, func=lambda x: plot_frame(x, sign, ax, title=label), frames=sign.frame.unique())
 
     return HTML(animation.to_html5_video())
+
+
+def plot_sample(data, n_frames=4):
+    frames = np.linspace(0, data['x'].shape[0], n_frames, dtype=int, endpoint=False)
+    plt.figure(figsize=(10, 10) if n_frames == 4 else (15, 15))
+    
+    for i, frame in enumerate(frames):
+        plt.subplot(int(np.sqrt(n_frames)), int(np.sqrt(n_frames)), i + 1)
+        plt.scatter(data['x'][frame], - data['y'][frame], s=2)
+        plt.title(f"Frame {frame}")
+        plt.axis()
+    plt.show()

@@ -2,6 +2,63 @@ import torch
 import numpy as np
 
 
+def normalize(data):
+    for k in ['x', 'y', 'z']:
+        x = data[k].flatten()
+        x = x[x > -10]
+
+        data[k] = torch.where(
+            data[k] > -10,
+            (data[k] - x.mean()) / (x.std() + 1e-6),
+            0
+        )
+    return data
+        
+
+def scale(data, factor=0.3, p=0.5):
+    if np.random.random() > p:
+        return data
+    
+    distort = np.random.random() < p
+    scale_factor = np.random.uniform(1 - factor, 1 + factor)
+
+    for k in ['x', 'y', 'z']:
+        distort_factor = np.random.uniform(1 - factor, 1 + factor) if distort else 0
+        data[k] *= (scale_factor + distort_factor)
+        
+    return data
+
+def dropout(data, drop_p=0.1, p=0.5):
+    if np.random.random() > p:
+        return data
+
+    mask = torch.rand(data['x'].size()) > drop_p
+    for k in ['x', 'y', 'z']:
+        data[k] *= mask
+
+    return data
+
+
+def rotate(data, max_angle=1/6, p=0.5):
+    if np.random.random() > p:
+        return data
+
+    x_o = torch.randn(1) + data['x'].mean()
+    y_o = torch.randn(1) + data['y'].max()
+
+    angle = max_angle * 2 * np.pi * (torch.rand(1) - 0.5)  # [+/- max_angle]
+    
+    cos = np.cos(angle)
+    sin = np.sin(angle)
+    
+    x = x_o + cos * (data['x'] - x_o) - sin * (data['y'] - y_o)
+    y = y_o + sin * (data['x'] - x_o) + cos * (data['y'] - y_o)
+    
+    data['x'] = x
+    data['y'] = y
+    return data
+    
+    
 def drop_frames(data, prop=0.1, p=0.5):
     if np.random.random() > p:
         return data
@@ -11,7 +68,7 @@ def drop_frames(data, prop=0.1, p=0.5):
     return {k: data[k][np.sort(to_keep)] for k in data.keys()}
 
 
-def add_noise(data, snr=10, p=0.5):
+def add_noise(data, snr=30, p=0.5):
     if np.random.random() > p:
         return data
 
@@ -33,8 +90,16 @@ def shift(data, snr=3, p=0.5):
     return data
 
 
-def augment(data):
-#     data = drop_frames(data, p=0.3)
-    data = add_noise(data, p=0.1)
-    data = shift(data, p=0.3)
+def augment(data, aug_strength=3):
+    if aug_strength == 2:
+        data = shift(data, p=0.5)
+        data = scale(data, p=0.5)
+        data = rotate(data, p=0.5)
+        data = drop_frames(data, p=0.25)
+        data = dropout(data, p=0.25)
+        data = add_noise(data, p=0.1)
+    elif aug_strength == 1:
+        data = shift(data, p=0.3)
+        data = add_noise(data, snr=3, p=0.1)
+        
     return data

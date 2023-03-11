@@ -105,12 +105,13 @@ class SignBertDeberta(nn.Module):
         self.transfo_heads = transfo_heads
 
         self.type_embed = nn.Embedding(12, embed_dim, padding_idx=0)
-        self.landmark_embed = nn.Embedding(127, embed_dim, padding_idx=0)
+        self.landmark_embed = nn.Embedding(101, embed_dim, padding_idx=0)
         
         self.type_norm = nn.LayerNorm(embed_dim)
         self.landmark_norm = nn.LayerNorm(embed_dim)
-        
+    
         self.pos_dense = nn.Linear(3, embed_dim)
+#         self.dense = nn.Linear(3 * embed_dim, transfo_dim)
 
         name = "bert-base-uncased"
         config = AutoConfig.from_pretrained(name, output_hidden_states=True)
@@ -153,8 +154,9 @@ class SignBertDeberta(nn.Module):
         x_type = self.type_norm(self.type_embed(x['type']))
         x_landmark = self.landmark_norm(self.landmark_embed(x['landmark']))
         x_pos = self.pos_dense(torch.stack([x['x'], x['y'], x['z']], -1))
-       
+
         fts = torch.cat([x_type, x_landmark, x_pos], -1)
+#         fts = x_type + x_landmark + x_pos
 
         bs, n_frames, n_landmarks, _ = fts.size()
         fts = fts.view(bs * n_frames, n_landmarks, -1)
@@ -177,6 +179,20 @@ class SignBertDeberta(nn.Module):
 
         return logits, torch.zeros(1)
 
+    def get_landmark_attentions(self, x):
+        x_type = self.type_norm(self.type_embed(x['type']))
+        x_landmark = self.landmark_norm(self.landmark_embed(x['landmark']))
+        x_pos = self.pos_dense(torch.stack([x['x'], x['y'], x['z']], -1))
+       
+        fts = torch.cat([x_type, x_landmark, x_pos], -1)
+
+        bs, n_frames, n_landmarks, _ = fts.size()
+        fts = fts.view(bs * n_frames, n_landmarks, -1)
+
+        out = self.landmark_transformer(fts, output_attentions=True)
+        
+        return out.attentions, out.cross_attentions
+        
 
 class SignTransformerDeberta(nn.Module):
     """

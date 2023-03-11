@@ -34,6 +34,7 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
     train_dataset = SignDataset(
         df_train,
         max_len=config.max_len,
+        aug_strength=config.aug_strength,
         train=True,
     )
 

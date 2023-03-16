@@ -22,7 +22,8 @@ class LenMatchBatchSampler(BatchSampler):
                 data = self.sampler.data_source[idx]
             except AttributeError:
                 data = self.sampler.dataset[idx]
-            bucket_id = (data["type"][:, 0] != 0).sum() // 10
+            bucket_id = (data["type"][:, 0] != 0).sum() // 2
+#             print((data["type"][:, 0] != 0).sum())
 
             if len(buckets[bucket_id]) == 0:
                 buckets[bucket_id] = []
@@ -139,6 +140,7 @@ def define_loaders(
             collate_fn=None,
             persistent_workers=True,
         )
+#         print('!!')
 
     else:
         train_loader = DataLoader(

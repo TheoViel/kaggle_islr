@@ -38,6 +38,9 @@ class Logger(object):
     def flush(self):
         for f in self.files:
             f.flush()
+            
+    def close(self):
+        pass
 
 
 def create_logger(directory="", name="logs.txt"):
@@ -173,13 +176,7 @@ def upload_to_kaggle(folders, directory, dataset_name, update_folders=True):
     for folder in folders:
         print(f"- Copying {folder} ...")
         name = "_".join(folder[:-1].split("/")[-2:])
-        try:
-            shutil.copytree(folder, directory + name)
-        except FileExistsError:
-            if update_folders:
-                shutil.rmtree(directory + name)
-                shutil.copytree(folder, directory + name)
-            continue
+        shutil.copyfile(folder + "model.tflite", directory + name + "_model.tflite")
 
     print(f"\nDataset size : {get_size(directory):.3f} Go")
 

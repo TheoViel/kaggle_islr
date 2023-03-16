@@ -25,6 +25,7 @@ def trim_tensors(data, min_len=10):
         dict of torch tensors: Trimmed tensors.
     """
     max_len = (data["type"][:, :, 0] != 0).sum(1).max()
+#     print(max_len)
     max_len = max(max_len, min_len)
     return {k: data[k][:, :max_len].contiguous() for k in data.keys()}
 
@@ -196,7 +197,7 @@ def fit(
                 torch.nn.utils.clip_grad_norm_(
                     model.parameters(),
                     optimizer_config["max_grad_norm"],
-                    #                 error_if_nonfinite=False,
+                    # error_if_nonfinite=False,
                 )
             scaler.step(optimizer)
             scale = scaler.get_scale()

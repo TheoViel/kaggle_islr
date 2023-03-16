@@ -1,5 +1,6 @@
 import matplotlib
 import numpy as np
+import seaborn as sns
 import matplotlib.pyplot as plt
 
 from IPython.display import HTML
@@ -216,13 +217,16 @@ def animate(sign, label):
     return HTML(animation.to_html5_video())
 
 
-def plot_sample(data, n_frames=4):
+def plot_sample(data, n_frames=4, figsize=(10, 10)):
     frames = np.linspace(0, data['x'].shape[0], n_frames, dtype=int, endpoint=False)
-    plt.figure(figsize=(10, 10) if n_frames == 4 else (15, 15))
+    plt.figure(figsize=figsize)
+    
+    cols = np.array([[0, 0, 0, 0]] + [list(c) + [1] for c in sns.color_palette(n_colors=11)])
     
     for i, frame in enumerate(frames):
         plt.subplot(int(np.sqrt(n_frames)), int(np.sqrt(n_frames)), i + 1)
-        plt.scatter(data['x'][frame], - data['y'][frame], s=2)
+        plt.scatter(data['x'][frame], - data['y'][frame], s=4, c=cols[data['type'][frame].numpy().astype(int)])
         plt.title(f"Frame {frame}")
-        plt.axis()
+#         plt.grid()
+        plt.axis(True)
     plt.show()

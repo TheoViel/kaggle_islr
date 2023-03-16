@@ -24,6 +24,8 @@
 # import torch_performance_linter
 
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+
 import time
 import torch
 import warnings
@@ -97,30 +99,33 @@ class Config:
     save_weights = True
 
     # Data
-    processed_folder = "processed_3/"
+    processed_folder = "torch_1/"
+#     processed_folder = "processed_3/"
     max_len = 50
-    aug_strength = 2
+    aug_strength = 0
 
     # k-fold
     k = 4
     folds_file = f"../input/folds_{k}.csv"
-    selected_folds = [0, 1, 2, 3]
+    selected_folds = [0]  # , 1, 2, 3]
 
     # Model
-    name = "bert_deberta"
+    name = "mlp_bert"
+#     name = "mha_bert"
+#     name = "bi_bert"
     pretrained_weights = None
     syncbn = False
     num_classes = 250
 
-    embed_dim = 128
-    transfo_dim = 3 * embed_dim
+    embed_dim = 32
+    transfo_dim = 384
     transfo_heads = 8
     drop_rate = 0.1
 
     # Training
     loss_config = {
         "name": "ce",
-        "smoothing": 0.1,
+        "smoothing": 0.3,
         "activation": "softmax",
         "aux_loss_weight": 0.,
         "activation_aux": "softmax",
@@ -129,7 +134,7 @@ class Config:
     data_config = {
         "batch_size": 32,
         "val_bs": 32,
-        "use_len_sampler": False,
+        "use_len_sampler": False,  # trimming is still slower, fix ?
     }
 
     optimizer_config = {
@@ -140,7 +145,7 @@ class Config:
         "max_grad_norm": 10.,
     }
 
-    epochs = 30
+    epochs = 40
 
     use_fp16 = True
 

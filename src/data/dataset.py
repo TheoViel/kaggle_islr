@@ -7,11 +7,15 @@ from data.transforms import augment, normalize
 from params import TYPE_MAPPING
 
 
-def crop_or_pad(data, max_len=100):
+def crop_or_pad(data, max_len=100, mode="start"):
     diff = max_len - data['x'].shape[0]
-    
+
     if diff <= 0:  # Crop
-        return {k : data[k][:max_len] for k in data.keys()}
+        if mode == "start":
+            return {k : data[k][:max_len] for k in data.keys()}
+        else:
+            offset = np.abs(diff) // 2
+            return {k : data[k][offset: offset + max_len] for k in data.keys()}
 
     padding = torch.ones((diff, data['x'].shape[1]))
     
@@ -26,17 +30,12 @@ def crop_or_pad(data, max_len=100):
 def regroup(d):
     to_regroup = ["left_eye", "left_eyebrow", "right_eye", "right_eyebrow", "nose"]
 
-#     to_drop = [13, 14, 15, 16, 17, 18, 49, 50, 51, 52]  # lips
-#     to_drop += [12, 20, 37, 58, 63, 65, 67, 70]  # silhouette
-#     for idx in to_drop:
-#         d = np.delete(d, idx, -1)
-
     for k in to_regroup:
         types = d[0, 0]
         dt = d.T[types == TYPE_MAPPING[k]].T
         d = d.T[types != TYPE_MAPPING[k]].T
         d = np.concatenate([d, dt.mean(-1, keepdims=True)], -1)
-        
+
     return d
 
 
@@ -83,8 +82,10 @@ class SignDataset(Dataset):
             torch tensor [1]: Aux label.
         """
         frames = np.load(self.paths[idx])
-        frames = regroup(frames)
         
+        if "processed_3/" in self.paths[idx]:
+            frames = regroup(frames)
+
         landmark_embed = np.arange(frames.shape[-1])[None] + 1
         landmark_embed = np.repeat(landmark_embed, frames.shape[0], axis=0)        
         
@@ -95,9 +96,11 @@ class SignDataset(Dataset):
             "y": torch.tensor(frames[:, 2], dtype=torch.float),
             "z": torch.tensor(frames[:, 3], dtype=torch.float),
         }
-        data["mask"] = torch.where(data["x"].clone() == -10, 1, 1)  # .bool()  # ALL 1s for now
-        
-        data = normalize(data)
+        data["mask"] = torch.ones(data["x"].size())
+
+        if "processed_3/" in self.paths[idx]:
+            data = normalize(data)
+            
         if self.train:
             data = augment(data, aug_strength=self.aug_strength)
 

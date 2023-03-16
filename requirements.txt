@@ -9,3 +9,9 @@ timm==0.6.12
 merlin-dataloader==0.0.2
 numerize
 nb_black
+tensorflow
+onnx_tf
+tflite-runtime==2.9.1
+tf2onnx
+tensorflow_probability
+onnxruntime

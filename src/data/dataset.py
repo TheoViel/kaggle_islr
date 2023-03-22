@@ -27,6 +27,16 @@ def crop_or_pad(data, max_len=100, mode="start"):
     return padded
 
 
+def interpolate(data, size=50):
+    interpolated = {}
+    for k in data.keys():
+        mode = "linear" if isinstance(data[k], torch.FloatTensor) else "nearest"
+        interpolated[k] = torch.nn.functional.interpolate(
+            data[k].T.unsqueeze(0).float(), size, mode=mode
+        )[0].T.to(data[k].dtype)
+    return interpolated
+
+
 def regroup(d):
     to_regroup = ["left_eye", "left_eyebrow", "right_eye", "right_eyebrow", "nose"]
 
@@ -49,6 +59,7 @@ class SignDataset(Dataset):
         df,
         max_len=None,
         aug_strength=0,
+        resize_mode="pad",
         train=False,
     ):
         """
@@ -62,6 +73,7 @@ class SignDataset(Dataset):
         self.max_len = max_len
         self.aug_strength = aug_strength
         self.train = train
+        self.resize_mode = resize_mode
         
         self.paths = df["processed_path"].values
         self.targets = df["target"].values
@@ -105,7 +117,10 @@ class SignDataset(Dataset):
             data = augment(data, aug_strength=self.aug_strength)
 
         if self.max_len is not None:
-            data = crop_or_pad(data, max_len=self.max_len)
+            if self.resize_mode == "pad":
+                data = crop_or_pad(data, max_len=self.max_len)
+            else:
+                data = interpolate(data, size=self.max_len)
 
         data["target"] = torch.tensor([self.targets[idx]], dtype=torch.float)
 

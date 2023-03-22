@@ -99,9 +99,8 @@ class Config:
     save_weights = True
 
     # Data
-    processed_folder = "torch_3/"
-    max_len = 40
-    resize_mode = "pad"
+    processed_folder = "torch_1/"
+    max_len = 50
     aug_strength = 1
 
     # k-fold
@@ -117,16 +116,15 @@ class Config:
     syncbn = False
     num_classes = 250
 
-    transfo_layers = 4
     embed_dim = 32
-    transfo_dim = 384  # 288
+    transfo_dim = 288  # 288
     transfo_heads = 8
-    drop_rate = 0.1
+    drop_rate = 0.05
 
     # Training
     loss_config = {
         "name": "ce",
-        "smoothing": 0.25,
+        "smoothing": 0.3,
         "activation": "softmax",
         "aux_loss_weight": 0.,
         "activation_aux": "softmax",
@@ -140,7 +138,7 @@ class Config:
 
     optimizer_config = {
         "name": "AdamW",
-        "lr": 4e-4,
+        "lr": 5e-4,
         "warmup_prop": 0.1,
         "betas": (0.9, 0.999),
         "max_grad_norm": 10.,

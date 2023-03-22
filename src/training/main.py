@@ -35,12 +35,14 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
         df_train,
         max_len=config.max_len,
         aug_strength=config.aug_strength,
+        resize_mode=config.resize_mode,
         train=True,
     )
 
     val_dataset = SignDataset(
         df_val,
         max_len=config.max_len,
+        resize_mode=config.resize_mode,
         train=False,
     )
 
@@ -60,6 +62,7 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
         embed_dim=config.embed_dim,
         transfo_dim=config.transfo_dim,
         transfo_heads=config.transfo_heads,
+        transfo_layers=config.transfo_layers,
         drop_rate=config.drop_rate,
         num_classes=config.num_classes,
         verbose=(config.local_rank == 0),

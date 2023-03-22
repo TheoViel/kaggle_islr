@@ -45,8 +45,8 @@ def rotate(data, max_angle=1/6, p=0.5):
     if np.random.random() > p:
         return data
 
-    x_o = torch.randn(1) + data['x'].mean()
-    y_o = torch.randn(1) + data['y'].max()
+    x_o = 0  # torch.randn(1) + data['x'].mean()
+    y_o = 0  # torch.randn(1) + data['y'].max()
 
     angle = max_angle * 2 * np.pi * (torch.rand(1) - 0.5)  # [+/- max_angle]
     
@@ -73,13 +73,13 @@ def drop_frames(data, prop=0.1, p=0.5):
     return {k: data[k][np.sort(to_keep)] for k in data.keys()}
 
 
-def add_noise(data, snr=30, p=0.5):
+def add_noise(data, snr=50, p=0.5):
     if np.random.random() > p:
         return data
 
     for k in ['x', 'y', 'z']:
         noise = torch.from_numpy(np.random.normal(scale=data[k].std() / snr, size=data[k].shape))
-        data[k] += noise
+        data[k] += noise * (data[k] != 0)
     
     return data
 
@@ -112,10 +112,10 @@ def augment(data, aug_strength=3):
         data = add_noise(data, p=0.1)
 
     elif aug_strength == 1:
-#         data = shift(data, p=0.25)
-#         data = scale(data, p=0.25)
-        data = rotate(data, p=0.25)
-        data = add_noise(data, p=0.25)
-#         data = dropout(data, p=0.25)
+#         data = shift(data, p=0.5)
+        data = rotate(data, p=0.5)
+        data = scale(data, p=0.25)
+#         data = add_noise(data, p=0.25, snr=50)
+#         data = dropout(data, p=0.5)
         
     return data

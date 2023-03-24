@@ -162,7 +162,8 @@ def k_fold(config, df, df_extra=None, log_folder=None, run=None):
             df_train = df.iloc[train_idx].copy().reset_index(drop=True)
             df_val = df.iloc[val_idx].copy().reset_index(drop=True)
             
-#             df_train = df_val.copy()
+            if df_extra is not None:
+                df_train = pd.concat([df_train, df_extra], ignore_index=True)
 
             pred_val = train(
                 config, df_train, df_val, fold, log_folder=log_folder, run=run

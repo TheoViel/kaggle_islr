@@ -21,7 +21,7 @@ def prepare_folds(k):
     df_folds.to_csv(f"../input/folds_{K}.csv", index=False)
 
 
-def prepare_data(data_path="../input/", processed_folder="train_landmark_files_processed/"):
+def prepare_data(data_path="../input/", processed_folder=""):
     df = pd.read_csv(data_path + "train.csv")
     classes = json.load(open(data_path + "sign_to_prediction_index_map.json", "r"))
 
@@ -31,3 +31,15 @@ def prepare_data(data_path="../input/", processed_folder="train_landmark_files_p
     df['processed_path'] = DATA_PATH + processed_folder + df['participant_id'].astype(str) + "_" + df['sequence_id'].astype(str) + ".npy"
 
     return df
+
+        
+def prepare_wsasl(data_path="../input/", processed_folder=""):
+    df_wsasl = pd.read_csv(data_path + 'df_wsasl.csv')
+    classes = json.load(open(data_path + "sign_to_prediction_index_map.json", "r"))
+
+    df_wsasl["target"] = df_wsasl["sign"].map(classes)
+    df_wsasl = df_wsasl.dropna(axis=0)
+
+    df_wsasl['processed_path'] = data_path + processed_folder + df_wsasl['processed_path']
+
+    return df_wsasl

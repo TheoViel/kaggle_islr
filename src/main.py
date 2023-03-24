@@ -31,7 +31,7 @@ import torch
 import warnings
 import argparse
 
-from data.preparation import prepare_data
+from data.preparation import prepare_data, prepare_wsasl
 from params import DATA_PATH
 from utils.torch import init_distributed
 from utils.logger import create_logger, save_config, prepare_log_folder, init_neptune
@@ -103,6 +103,7 @@ class Config:
     max_len = 40
     resize_mode = "pad"
     aug_strength = 1
+    use_extra_data = False
 
     # k-fold
     k = 4
@@ -110,23 +111,23 @@ class Config:
     selected_folds = [0, 1, 2, 3]
 
     # Model
-    name = "mlp_bert"
+    name = "mlp_bert_2"
 #     name = "cnn_bert"
 #     name = "bi_bert"
-    pretrained_weights = None
+    pretrained_weights = None  # "../logs/pretrain/2023-03-23/4/mlp_bert_0.pt"  # None
     syncbn = False
     num_classes = 250
 
     transfo_layers = 4
-    embed_dim = 32
+    embed_dim = 16
     transfo_dim = 384  # 288
     transfo_heads = 8
-    drop_rate = 0.1
+    drop_rate = 0.05
 
     # Training
     loss_config = {
         "name": "ce",
-        "smoothing": 0.25,
+        "smoothing": 0.3,
         "activation": "softmax",
         "aux_loss_weight": 0.,
         "activation_aux": "softmax",
@@ -140,7 +141,7 @@ class Config:
 
     optimizer_config = {
         "name": "AdamW",
-        "lr": 4e-4,
+        "lr": 5e-4,
         "warmup_prop": 0.1,
         "betas": (0.9, 0.999),
         "max_grad_norm": 10.,
@@ -231,8 +232,14 @@ if __name__ == "__main__":
 
     from training.main import k_fold
 
-#     df = df.head(10000).reset_index(drop=True)
-    k_fold(Config, df, log_folder=log_folder, run=run)
+
+    df_extra = None
+    if config.use_extra_data:
+        df_extra = prepare_wsasl(DATA_PATH, config.processed_folder[:-1] + "_wlasl/")
+    
+    #     df = df.head(10000).reset_index(drop=True)
+    
+    k_fold(Config, df, df_extra=df_extra, log_folder=log_folder, run=run)
 
     if config.local_rank == 0:
         print("\nDone !")

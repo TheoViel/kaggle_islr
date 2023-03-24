@@ -1,16 +1,16 @@
 import os
-import cv2
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+
 import time
 import torch
 import warnings
 import argparse
+import pandas as pd
 
-from params import LOG_PATH, DATA_PATH
-from data.preparation import prepare_vindr_data
+from data.preparation import prepare_data
+from params import DATA_PATH, LOG_PATH
 from utils.torch import init_distributed
-from utils.logger import create_logger, save_config, prepare_log_folder
-
-cv2.setNumThreads(0)
+from utils.logger import create_logger, save_config, prepare_log_folder, init_neptune
 
 
 def parse_args():
@@ -19,6 +19,12 @@ def parse_args():
     """
     parser = argparse.ArgumentParser()
 
+    parser.add_argument(
+        "--fold",
+        type=int,
+        default=-1,
+        help="Fold number",
+    )
     parser.add_argument(
         "--device",
         type=int,
@@ -44,16 +50,16 @@ def parse_args():
         help="Number of epochs",
     )
     parser.add_argument(
-        "--batch-size",
-        type=int,
-        default=0,
-        help="Batch size",
-    )
-    parser.add_argument(
         "--lr",
         type=float,
         default=0,
         help="learning rate",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=0,
+        help="Batch size",
     )
     return parser.parse_args()
 
@@ -62,82 +68,69 @@ class Config:
     """
     Parameters used for training
     """
-
     # General
     seed = 42
     verbose = 1
     device = "cuda"
     save_weights = True
 
-    # Images
-    img_folder = "vindr_yolox_1536_1024/"
-    aug_strength = 2
-    resize = None
-
-    use_cbis = False
-    use_cmmd = False
-    use_pasm = False
-    use_pl = False
+    # Data
+    processed_folder = "torch_3_wlasl/"
+    max_len = 40
+    resize_mode = "pad"
+    aug_strength = 1
 
     # k-fold
     k = 4
-    folds_file = ""
-    selected_folds = [0]
+    folds_file = f"../input/folds_{k}.csv"
+    selected_folds = [0, 1, 2, 3]
 
     # Model
-    name = "nextvit_base"
+    name = "mlp_bert"
+#     name = "cnn_bert"
+#     name = "bi_bert"
     pretrained_weights = None
-    num_classes = 5
-    num_classes_aux = 0
-    n_channels = 3
-    reduce_stride = False
-    drop_rate = 0.
-    drop_path_rate = 0.
-    use_gem = False
     syncbn = False
+    num_classes = 2000
+
+    transfo_layers = 4
+    embed_dim = 32
+    transfo_dim = 384  # 288
+    transfo_heads = 8
+    drop_rate = 0.1
 
     # Training
     loss_config = {
         "name": "ce",
-        "smoothing": 0.1,  # 0.01
-        "activation": "softmax",  # "sigmoid", "softmax"
-        "aux_loss_weight": 0.0,
-        "pos_weight": None,
+        "smoothing": 0.3,
+        "activation": "softmax",
+        "aux_loss_weight": 0.,
         "activation_aux": "softmax",
-        "gmic": "gmic" in name,
     }
 
     data_config = {
-        "batch_size": 8,
-        "val_bs": 8,
-        "mix": "mixup",
-        "mix_proba": 0.0,
-        "mix_alpha": 4.0,
-        "additive_mix": False,
-        "use_len_sampler": False,
-        "use_balanced_sampler": False,
-        "use_weighted_sampler": False,
-        "sampler_weights": [1, 1, 1, 1],  # pos, birads 0, 1, 2
-        "use_custom_collate": False,
+        "batch_size": 32,
+        "val_bs": 32,
+        "use_len_sampler": False,  # trimming is still slower, fix ?
     }
 
     optimizer_config = {
         "name": "AdamW",
-        "lr": 1e-4,
-        "warmup_prop": 0.0,
+        "lr": 5e-4,
+        "warmup_prop": 0.1,
         "betas": (0.9, 0.999),
-        "max_grad_norm": 10.0,
-        "weight_decay": 0,  # 1e-2,
+        "max_grad_norm": 10.,
     }
 
-    epochs = 5
+    epochs = 60
 
     use_fp16 = True
 
     verbose = 1
-    verbose_eval = 100
+    verbose_eval = 250
 
-    fullfit = False
+    fullfit = len(selected_folds) == 4
+    n_fullfit = 1
 
 
 if __name__ == "__main__":
@@ -157,45 +150,49 @@ if __name__ == "__main__":
         os.environ["CUDA_VISIBLE_DEVICES"] = str(device)
         assert torch.cuda.device_count() == 1
 
-    log_folder = args.log_folder
-    if not log_folder:
-        if config.local_rank == 0:
-            log_folder = prepare_log_folder(LOG_PATH + "pretrain/")
-
+    log_folder = None
     if config.local_rank == 0:
-        create_logger(directory=log_folder, name="logs.txt")
-        save_config(config, log_folder + "config.json")
+        log_folder = prepare_log_folder(LOG_PATH  + "pretrain/")
 
     if args.model:
         config.name = args.model
-        config.loss_config['gmic'] = "gmic" in config.name
+        if config.pretrained_weights is not None:
+            config.pretrained_weights = PRETRAINED_WEIGHTS.get(args.model, None)
 
     if args.epochs:
         config.epochs = args.epochs
+
+    if args.lr:
+        config.optimizer_config["lr"] = args.lr
 
     if args.batch_size:
         config.data_config["batch_size"] = args.batch_size
         config.data_config["val_bs"] = args.batch_size
 
-    if args.lr:
-        config.optimizer_config["lr"] = args.lr
-
-    df = prepare_vindr_data(DATA_PATH, DATA_PATH + Config.img_folder)
+    
+    run = None
+    if config.local_rank == 0:
+        create_logger(directory=log_folder, name="logs.txt")
+        save_config(config, log_folder + "config.json")
 
     if config.local_rank == 0:
         print("Device :", torch.cuda.get_device_name(0), "\n")
 
-        print(f"- Model  {config.name}")
+        print(f"- Model {config.name}")
         print(f"- Epochs {config.epochs}")
         print(
             f"- Learning rate {config.optimizer_config['lr']:.1e}   (n_gpus={config.world_size})"
         )
-
         print("\n -> Training\n")
 
-    from training.main import k_fold
+    from training.main import train
 
-    k_fold(Config, df, log_folder=log_folder)
+#     df = df.head(10000).reset_index(drop=True)
+    df = pd.read_csv(DATA_PATH + 'df_wsasl.csv').sample(frac=1, random_state=config.seed)
+    
+    df['processed_path'] = DATA_PATH + config.processed_folder + df['processed_path']
+
+    train(config, df.head(len(df) - 1000), df.tail(1000), 0, log_folder=log_folder, run=run)
 
     if config.local_rank == 0:
         print("\nDone !")

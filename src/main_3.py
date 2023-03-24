@@ -122,7 +122,7 @@ class Config:
     embed_dim = 16
     transfo_dim = 288  # 288
     transfo_heads = 8
-    drop_rate = 0.05
+    drop_rate = 0
 
     # Training
     loss_config = {

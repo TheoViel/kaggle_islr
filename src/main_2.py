@@ -108,25 +108,26 @@ class Config:
     # k-fold
     k = 4
     folds_file = f"../input/folds_{k}.csv"
-    selected_folds = [0, 1, 2, 3]
+    selected_folds = [0]  # , 1, 2, 3]
 
     # Model
     name = "mlp_bert_2"
-#     name = "cnn_bert"
+#     name = "mlp_cnn"
 #     name = "bi_bert"
-    pretrained_weights = None  # "../logs/pretrain/2023-03-23/4/mlp_bert_0.pt"  # None
+    pretrained_weights = None  # "../logs/2023-03-27/19/mlp_bert_2_0.pt"  "../logs/pretrain/2023-03-23/4/mlp_bert_0.pt" 
     syncbn = False
     num_classes = 250
+    num_classes_aux = 0
 
     transfo_layers = 4
     embed_dim = 16
-    transfo_dim = 288  # 288
+    transfo_dim = 384  # 288
     transfo_heads = 8
     drop_rate = 0.05
 
     # Training
     loss_config = {
-        "name": "ce",
+        "name": "ce",  # ce
         "smoothing": 0.3,
         "activation": "softmax",
         "aux_loss_weight": 0.,
@@ -134,25 +135,25 @@ class Config:
     }
 
     data_config = {
-        "batch_size": 32,
-        "val_bs": 32,
+        "batch_size": 512, #  if loss_config['name'] != "supcon" else 1024,
+        "val_bs": 1024,
         "use_len_sampler": False,  # trimming is still slower, fix ?
     }
 
     optimizer_config = {
         "name": "AdamW",
-        "lr": 5e-4,
+        "lr": 1e-3,
         "warmup_prop": 0.1,
         "betas": (0.9, 0.999),
         "max_grad_norm": 10.,
     }
 
-    epochs = 60
+    epochs = 60 #if loss_config['name'] != "supcon" else 200
 
     use_fp16 = True
 
     verbose = 1
-    verbose_eval = 250
+    verbose_eval = 250 #  if loss_config['name'] != "supcon" else 25
 
     fullfit = len(selected_folds) == 4
     n_fullfit = 1

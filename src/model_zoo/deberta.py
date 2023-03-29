@@ -479,7 +479,7 @@ class DisentangledSelfAttention(nn.Module):
 
         self.dropout = StableDropout(config.attention_probs_dropout_prob)
         
-        self.rel_pos =  torch.from_numpy(np.load('rel_pos.npy').astype(np.int32))
+#         self.rel_pos =  torch.from_numpy(np.load('rel_pos.npy').astype(np.int32))
         
         sz = 50 * self.num_attention_heads  # max_len * n_heads
         self.eye = np.ravel_multi_index(np.where(np.eye(sz)), (sz, sz))

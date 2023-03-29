@@ -65,6 +65,8 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
         transfo_layers=config.transfo_layers,
         drop_rate=config.drop_rate,
         num_classes=config.num_classes,
+        num_classes_aux=config.num_classes_aux,
+        n_landmarks=config.n_landmarks,
         verbose=(config.local_rank == 0),
     ).cuda()
 

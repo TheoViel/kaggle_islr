@@ -30,3 +30,5 @@ output/
 input/
 weights_*/
 notebooks/.ipynb_checkpoints/
+openhands/
+

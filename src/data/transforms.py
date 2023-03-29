@@ -2,6 +2,31 @@ import torch
 import numpy as np
 
 
+FLIP_MAP = {
+    6: 26, 4: 24, 16: 35, 21: 40, 13: 33, 17: 36, 14: 34, 18: 37,  # silhouette
+    20: 39, 98: 96, 97: 95, 99: 99,  # face
+    41: 74, 42: 75, 43: 76, 44: 77, 45: 78, 46: 79, 47: 80, 48: 81, 49: 82, 50: 83, 51: 84, 52: 85, 53: 86, 54: 87, 55: 88, 56: 89, 57: 90, 58: 91, 59: 92, 60: 93, 61: 94,  # hands
+    62: 63, 64: 65, 66: 67, 68: 69, 70: 71, 72: 73,  # pose
+    2: 22, 3: 23, 9: 29, 12 : 32, 5: 25,  # outter lips
+    27 : 7, 11: 31, 10: 30, 19: 38, 8: 1,  # intter lips
+}
+
+FLIP_ARRAY = np.arange(100)
+for k,v in FLIP_MAP.items():
+    FLIP_ARRAY[k] = v
+    FLIP_ARRAY[v] = k
+
+    
+def flip(data, flip_array=FLIP_ARRAY, p=1):
+    if np.random.random() > p:
+        return data
+
+    data['x'] = - data['x']
+    for k in ['x', 'y', 'z']:
+        data[k] = data[k].T[flip_array].T
+    return data
+
+
 def normalize(data):
     for k in ['x', 'y', 'z']:
         x = data[k].flatten()
@@ -105,14 +130,12 @@ def augment(data, aug_strength=3):
         data = add_noise(data, snr=3, p=0.5)
 
     if aug_strength == 2:
-        data = shift(data, p=0.5)
-        data = scale(data, p=0.5)
         data = rotate(data, p=0.5)
-        data = dropout(data, p=0.25)
-        data = add_noise(data, p=0.1)
+        data = scale(data, p=0.5)
 
     elif aug_strength == 1:
 #         data = shift(data, p=0.5)
+        data = flip(data, p=0.5)
         data = rotate(data, p=0.5)
         data = scale(data, p=0.25)
 #         data = add_noise(data, p=0.25, snr=50)

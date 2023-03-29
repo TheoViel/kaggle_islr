@@ -188,6 +188,9 @@ def fit(
             with torch.cuda.amp.autocast(enabled=use_fp16):
                 y_pred, y_pred_aux = model(data)
                 loss = loss_fct(y_pred, y_pred_aux, data['target'], 0)
+                
+#             if not (step % 10):
+#                 print(step, loss.item(), y_pred.mean().item())
 
             scaler.scale(loss).backward()
             avg_losses.append(loss.detach())

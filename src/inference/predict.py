@@ -28,7 +28,6 @@ def predict(model, dataset, loss_config, batch_size=64, device="cuda", use_fp16=
     model.eval()
     preds = np.empty((0, model.num_classes))
     preds_aux = []
-    fts = []
 
     loader = DataLoader(
         dataset,
@@ -38,12 +37,12 @@ def predict(model, dataset, loss_config, batch_size=64, device="cuda", use_fp16=
     )
 
     with torch.no_grad():
-        for batch in tqdm(loader):
-            x = batch[0].to(device)
+        for data in tqdm(loader):
+            for k in data.keys():
+                data[k] = data[k].cuda()
 
-            # Forward
             with torch.cuda.amp.autocast(enabled=use_fp16):
-                pred, pred_aux, ft = model(x, return_fts=True)
+                pred, pred_aux = model(data)
 
             # Get probabilities
             if loss_config["activation"] == "sigmoid":
@@ -58,9 +57,8 @@ def predict(model, dataset, loss_config, batch_size=64, device="cuda", use_fp16=
 
             preds = np.concatenate([preds, pred.cpu().numpy()])
             preds_aux.append(pred_aux.cpu().numpy())
-            fts.append(ft.cpu().numpy())
 
-    return preds, np.concatenate(preds_aux), np.concatenate(fts)
+    return preds, np.concatenate(preds_aux)
 
 
 def predict_tta(

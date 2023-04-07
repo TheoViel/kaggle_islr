@@ -5,11 +5,15 @@ cd src
 
 torchrun --nproc_per_node=8 main.py 
 
+
+# --lr 2e-4 --epochs 100
+
 # echo
 
-# torchrun --nproc_per_node=8 main.py --lr 4e-4 --epochs 60
+# torchrun --nproc_per_node=8 main.py --lr 3e-4 --epochs 80
 
 # echo
 
-# torchrun --nproc_per_node=8 main.py --lr 4e-4 --epochs 80
+# torchrun --nproc_per_node=8 main.py --lr 2e-4 --epochs 80
 
+# echo

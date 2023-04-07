@@ -57,19 +57,23 @@ class DebertaV2Attention(nn.Module):
     def forward(
         self,
         hidden_states,
-        attention_mask=None,
+        attention_mask,
         output_attentions=False,
         query_states=None,
         relative_pos=None,
         rel_embeddings=None,
+        ids=None,
+        ids_t=None,
     ):
         self_output = self.self(
             hidden_states,
-#             attention_mask,
+            attention_mask,
             output_attentions,
             query_states=query_states,
             relative_pos=relative_pos,
             rel_embeddings=rel_embeddings,
+            ids=ids,
+            ids_t=ids_t,
         )
         if output_attentions:
             self_output, att_matrix = self_output
@@ -126,19 +130,23 @@ class DebertaV2Layer(nn.Module):
     def forward(
         self,
         hidden_states,
-        attention_mask=None,
+        attention_mask,
         query_states=None,
         relative_pos=None,
         rel_embeddings=None,
         output_attentions=False,
+        ids=None,
+        ids_t=None,
     ):
         attention_output = self.attention(
             hidden_states,
-#             attention_mask,
+            attention_mask,
             output_attentions=output_attentions,
             query_states=query_states,
             relative_pos=relative_pos,
             rel_embeddings=rel_embeddings,
+            ids=ids,
+            ids_t=ids_t,
         )
         if output_attentions:
             attention_output, att_matrix = attention_output
@@ -151,7 +159,9 @@ class DebertaV2Layer(nn.Module):
 
 
 class DebertaV2Encoder(nn.Module):
-    """Modified BertEncoder with relative position bias support"""
+    """
+    Modified BertEncoder with relative position bias support
+    """
 
     def __init__(self, config):
         super().__init__()
@@ -188,42 +198,75 @@ class DebertaV2Encoder(nn.Module):
             ConvLayer(config) if getattr(config, "conv_kernel_size", 0) > 0 else None
         )
         self.gradient_checkpointing = False
+        
+        self.num_attention_heads = config.num_attention_heads
+        self.position_buckets = config.position_buckets
+        self.ids = torch.zeros((config.max_len + 1, config.num_attention_heads, config.max_len, config.max_len), dtype=torch.int)
+        self.ids_t = torch.zeros((config.max_len + 1, config.num_attention_heads, config.max_len, config.max_len), dtype=torch.int)
+        for k in range(config.max_len + 1):
+            self.ids[k, :, :k, :k] = self.compute_ids(transpose=False, max_len=k)
+            self.ids_t[k, :, :k, :k] = self.compute_ids(transpose=True, max_len=k)
+            
+    def compute_ids(self, transpose=True, max_len=50):
+        if transpose:
+            ids = (
+                np.arange(max_len)[None]
+                - np.arange(max_len)[:, None]
+                + self.position_buckets
+            )
+        else:
+            ids = (
+                np.arange(max_len)[:, None]
+                - np.arange(max_len)[None]
+                + self.position_buckets
+            )
 
+        ids += np.arange(0, max_len)[:, None] * self.position_buckets * 2
+        ids = ids[None]
+
+        # REPEAT NUM_ATT_HEADS
+        ids = torch.from_numpy(ids)
+        ids = ids.expand(self.num_attention_heads, -1, -1).contiguous()
+        ids += torch.from_numpy(
+            np.arange(ids.size(0)) * self.position_buckets * 2 * max_len
+        ).view(-1, 1, 1)
+
+        return ids
+    
     def get_rel_embedding(self):
         rel_embeddings = self.rel_embeddings.weight if self.relative_attention else None
         if rel_embeddings is not None and ("layer_norm" in self.norm_rel_ebd):
             rel_embeddings = self.LayerNorm(rel_embeddings)
         return rel_embeddings
 
-#     def get_attention_mask(self, attention_mask):
-#         if attention_mask.dim() <= 2:
-#             extended_attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
-#             attention_mask = extended_attention_mask * extended_attention_mask.squeeze(
-#                 -2
-#             ).unsqueeze(-1)
-#             attention_mask = attention_mask.byte()
-#         elif attention_mask.dim() == 3:
-#             attention_mask = attention_mask.unsqueeze(1)
+    def get_attention_mask(self, attention_mask):
+        if attention_mask.dim() <= 2:
+            extended_attention_mask = attention_mask.unsqueeze(1).unsqueeze(2)
+            attention_mask = extended_attention_mask * extended_attention_mask.squeeze(
+                -2
+            ).unsqueeze(-1)
+            attention_mask = attention_mask.byte()
+        elif attention_mask.dim() == 3:
+            attention_mask = attention_mask.unsqueeze(1)
 
-#         return attention_mask
+        return attention_mask
 
     def forward(
         self,
         hidden_states,
-        attention_mask=None,
+        attention_mask,
         output_hidden_states=True,
         output_attentions=False,
         query_states=None,
         relative_pos=None,
         return_dict=True,
     ):
-#         if attention_mask.dim() <= 2:
-#             input_mask = attention_mask
-#         else:
-#             input_mask = (attention_mask.sum(-2) > 0).byte()
-#         attention_mask = self.get_attention_mask(attention_mask)
+        if attention_mask.dim() <= 2:
+            input_mask = attention_mask
+        else:
+            input_mask = (attention_mask.sum(-2) > 0).byte()
+        attention_mask = self.get_attention_mask(attention_mask)
 
-        relative_pos = None
         all_hidden_states = () if output_hidden_states else None
         all_attentions = () if output_attentions else None
 
@@ -239,18 +282,20 @@ class DebertaV2Encoder(nn.Module):
 
             output_states = layer_module(
                 next_kv,
-#                     attention_mask,
+                attention_mask,
                 query_states=query_states,
-                relative_pos=relative_pos,
+                relative_pos=None,
                 rel_embeddings=rel_embeddings,
                 output_attentions=output_attentions,
+                ids=self.ids,
+                ids_t=self.ids_t,
             )
 
             if output_attentions:
                 output_states, att_m = output_states
 
-#             if i == 0 and self.conv is not None:
-#                 output_states = self.conv(hidden_states, output_states, input_mask)
+            if i == 0 and self.conv is not None:
+                output_states = self.conv(hidden_states, output_states, input_mask)
 
             if query_states is not None:
                 query_states = output_states
@@ -286,7 +331,6 @@ class DisentangledSelfAttention(nn.Module):
             A model config class instance with the configuration to build a new model. The schema is similar to
             *BertConfig*, for more details, please refer [`DebertaV2Config`]
     """
-
     def __init__(self, config):
         super().__init__()
         if config.hidden_size % config.num_attention_heads != 0:
@@ -332,12 +376,6 @@ class DisentangledSelfAttention(nn.Module):
                     )
 
         self.dropout = StableDropout(config.attention_probs_dropout_prob)
-        
-        self.ids = torch.zeros((config.max_len + 1, config.num_attention_heads, config.max_len, config.max_len), dtype=torch.int)
-        self.ids_t = torch.zeros((config.max_len + 1, config.num_attention_heads, config.max_len, config.max_len), dtype=torch.int)
-        for k in range(config.max_len + 1):
-            self.ids[k, :, :k, :k] = self.compute_ids(transpose=False, max_len=k)
-            self.ids_t[k, :, :k, :k] = self.compute_ids(transpose=True, max_len=k)
 
         self.scale_mult = torch.tensor(self.attention_head_size, dtype=torch.float)
 
@@ -349,11 +387,13 @@ class DisentangledSelfAttention(nn.Module):
     def forward(
         self,
         hidden_states,
-        attention_mask=None,
+        attention_mask,
         output_attentions=False,
         query_states=None,
         relative_pos=None,
         rel_embeddings=None,
+        ids=None,
+        ids_t=None
     ):
         """
         Call the module
@@ -404,7 +444,13 @@ class DisentangledSelfAttention(nn.Module):
         if self.relative_attention:
             rel_embeddings = self.pos_dropout(rel_embeddings)
             rel_att = self.efficient_disentangled_attention_bias(
-                query_layer, key_layer, relative_pos, rel_embeddings, scale_factor
+                query_layer,
+                key_layer,
+                relative_pos,
+                rel_embeddings,
+                scale_factor,
+                ids=ids,
+                ids_t=ids_t
             )
 
         if rel_att is not None:
@@ -418,10 +464,8 @@ class DisentangledSelfAttention(nn.Module):
         )
 
         # bsz x height x length x dimension
-#         attention_probs = XSoftmax.apply(attention_scores, attention_mask, -1)
-        attention_probs = torch.softmax(attention_scores, -1)
-#         attention_probs = self.dropout(attention_probs)
-
+        attention_probs = XSoftmax.apply(attention_scores, attention_mask, -1)  # CAN BE OPTIMISED ?
+        attention_probs = self.dropout(attention_probs)  # CAN BE REMOVED ?
         context_layer = torch.bmm(
             attention_probs.view(
                 -1, attention_probs.size(-2), attention_probs.size(-1)
@@ -445,47 +489,15 @@ class DisentangledSelfAttention(nn.Module):
         else:
             return context_layer
 
-    def compute_ids(self, transpose=True, max_len=50):
-        if transpose:
-            ids = (
-                np.arange(max_len)[None]
-                - np.arange(max_len)[:, None]
-                + self.position_buckets
-            )
-        else:
-            ids = (
-                np.arange(max_len)[:, None]
-                - np.arange(max_len)[None]
-                + self.position_buckets
-            )
-
-        ids += np.arange(0, max_len)[:, None] * self.position_buckets * 2
-        ids = ids[None]
-
-        # REPEAT NUM_ATT_HEADS
-        ids = torch.from_numpy(ids)
-        ids = ids.expand(self.num_attention_heads, -1, -1).contiguous()
-        ids += torch.from_numpy(
-            np.arange(ids.size(0)) * self.position_buckets * 2 * max_len
-        ).view(-1, 1, 1)
-
-        return ids
-
-    def my_gather(self, c2p_att, dim=2, transpose=False):
-        bs, sz, n_fts = c2p_att.size()
-
-        if transpose:
-            ids = self.ids_t[c2p_att.size(1), :, :c2p_att.size(1), :c2p_att.size(1)].contiguous().view(-1)
-        else:
-            ids = self.ids[c2p_att.size(1), :, :c2p_att.size(1), :c2p_att.size(1)].contiguous().view(-1)
-
-        c2p_att = c2p_att.view(-1)
-
-        y = c2p_att[ids].view(bs, sz, sz)
+    def my_gather(self, att, ids):
+        bs, sz, n_fts = att.size()
+        ids_ = ids[att.size(1), :, :att.size(1), :att.size(1)].contiguous().view(-1)
+        att = att.view(-1)
+        y = att[ids_].view(bs, sz, sz)
         return y
 
     def efficient_disentangled_attention_bias(
-        self, query_layer, key_layer, relative_pos, rel_embeddings, scale_factor
+        self, query_layer, key_layer, relative_pos, rel_embeddings, scale_factor, ids=None, ids_t=None
     ):
         att_span = self.pos_ebd_size
         rel_embeddings = rel_embeddings[0 : att_span * 2, :].unsqueeze(0)
@@ -506,18 +518,18 @@ class DisentangledSelfAttention(nn.Module):
                 pos_query_layer = self.transpose_for_scores(
                     self.pos_query_proj(rel_embeddings), self.num_attention_heads
                 )
-        score = 0
 
+        score = 0
         if "c2p" in self.pos_att_type:  # content->position
             scale = torch.sqrt(self.scale_mult * scale_factor)
             c2p_att = torch.bmm(query_layer, pos_key_layer.transpose(-1, -2))
-            c2p_att = self.my_gather(c2p_att, dim=2)
+            c2p_att = self.my_gather(c2p_att, ids)
             score += c2p_att / scale
-
-        if "p2c" in self.pos_att_type:   # position->content
+        
+        if "p2c" in self.pos_att_type:  # position->content
             scale = torch.sqrt(self.scale_mult * scale_factor)
             p2c_att = torch.bmm(key_layer, pos_query_layer.transpose(-1, -2))
-            p2c_att = self.my_gather(p2c_att, dim=2, transpose=True).transpose(-1, -2)
+            p2c_att = self.my_gather(p2c_att, ids_t).transpose(-1, -2)
             score += p2c_att / scale
 
         return score

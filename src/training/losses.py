@@ -31,9 +31,7 @@ class SmoothCrossEntropyLoss(nn.Module):
 
         if self.eps > 0:
             n_class = inputs.size(1)
-            targets = targets * (1 - self.eps) + (1 - targets) * self.eps / (
-                n_class - 1
-            )
+            targets = targets * (1 - self.eps) + (1 - targets) * self.eps / (n_class - 1)
 
         loss = -targets * F.log_softmax(inputs, dim=1)
         loss = loss.sum(-1)

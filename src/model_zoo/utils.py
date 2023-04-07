@@ -46,12 +46,45 @@ def compute_adjacency_matrix(x_pos):
     return adj
 
 
+def compute_finger_face_distance(x):
+    """
+    x : bs x n_frames x n_landmarks x n_fts
+    """
+    FINGER_TIPS_R = [41, 37, 33, 29, 25]
+    FINGER_TIPS_L = [20, 16, 12, 8, 4]
+
+    FACE = [60, 71, 76, 93, 94, 95, 96, 97, 98, 99]
+
+    x_r = x[:, :, :, 0].T[FINGER_TIPS_R].T.unsqueeze(-1)
+    x_l = x[:, :, :, 0].T[FINGER_TIPS_L].T.unsqueeze(-1)
+    x_f = x[:, :, :, 0].T[FACE].T.unsqueeze(-2)
+
+    y_r = x[:, :, :, 1].T[FINGER_TIPS_R].T.unsqueeze(-1)
+    y_l = x[:, :, :, 1].T[FINGER_TIPS_L].T.unsqueeze(-1)
+    y_f = x[:, :, :, 1].T[FACE].T.unsqueeze(-2)
+    
+    d_l = (x_l - x_f) ** 2 + (y_l - y_f) ** 2
+    d_r = (x_r - x_f) ** 2 + (y_r - y_f) ** 2
+    
+    mask_r = (x_r ** 2 + y_r ** 2) > 0
+    mask_l = (x_l ** 2 + y_l ** 2) > 0
+    
+    d = (d_l * mask_l) + (d_r * mask_r)
+    
+    return d.view(d.size(0), d.size(1), -1)  # bs x n_frames x 50
+
+
 def compute_hand_features(x, embed):
+    """
+    x : bs x n_frames x n_landmarks x n_fts
+    """
+    x = x[:, :, :, :2]  # remove z
     bs, n_frames, n_landmarks, n_fts = x.size()
+
     embed = (
         embed[:, 0].unsqueeze(1).repeat(1, n_frames, 1).view(-1)
     )  # this avoids padding
-    left_hand = x.view(-1, n_fts)[embed == 5].view(bs, n_frames, -1, n_fts)
+    left_hand = x.view(-1, n_fts)[embed == 1].view(bs, n_frames, -1, n_fts)
     adj_left_hand = (
         ((left_hand.unsqueeze(-2) - left_hand.unsqueeze(-3)) ** 2).sum(-1).sqrt()
     )
@@ -61,7 +94,7 @@ def compute_hand_features(x, embed):
     ids_a, ids_b = torch.triu_indices(sz, sz, offset=1).unbind()
     adj_left_hand = adj_left_hand[:, ids_a, ids_b].view(bs, n_frames, -1)
 
-    right_hand = x.view(-1, n_fts)[embed == 10].view(bs, n_frames, -1, n_fts)
+    right_hand = x.view(-1, n_fts)[embed == 2].view(bs, n_frames, -1, n_fts)
     adj_right_hand = (
         ((right_hand.unsqueeze(-2) - right_hand.unsqueeze(-3)) ** 2).sum(-1).sqrt()
     )
@@ -71,7 +104,7 @@ def compute_hand_features(x, embed):
     ids_a, ids_b = torch.triu_indices(sz, sz, offset=1).unbind()
     adj_right_hand = adj_right_hand[:, ids_a, ids_b].view(bs, n_frames, -1)
 
-    return torch.cat([adj_left_hand, adj_right_hand], -1)
+    return adj_left_hand + adj_right_hand
 
 
 def compute_hand_to_face_distances(x, embed):

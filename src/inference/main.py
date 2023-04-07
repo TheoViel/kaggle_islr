@@ -1,16 +1,46 @@
 import os
 import json
 import glob
+import torch
 import numpy as np
 import pandas as pd
 
-from data.dataset import BreastDataset
-from data.transforms import get_transfos
+from data.dataset import SignDataset
 from model_zoo.models import define_model
 from utils.logger import Config
-from utils.metrics import tweak_thresholds
 from utils.torch import load_model_weights
+from utils.metrics import accuracy
 from inference.predict import predict, predict_tta
+
+
+def uniform_soup(model, weights, device="cpu", by_name=False):
+    if not isinstance(weights, list):
+        weights = [weights]
+
+    model = model.to(device)
+    model_dict = model.state_dict()
+
+    soups = {key:[] for key in model_dict}
+    
+    for i, model_path in enumerate(weights):
+        weight = torch.load(model_path, map_location=device)
+        weight_dict = weight.state_dict() if hasattr(weight, "state_dict") else weight
+        
+        if by_name:
+            weight_dict = {k: v for k, v in weight_dict.items() if k in model_dict}
+
+        for k, v in weight_dict.items():
+            soups[k].append(v)
+
+    if 0 < len(soups):
+        soups = {
+            k: (torch.sum(torch.stack(v), axis = 0) / len(v)).type(v[0].dtype)
+            for k, v in soups.items() if len(v) != 0
+        }
+        model_dict.update(soups)
+        model.load_state_dict(model_dict)
+
+    return model
 
 
 def kfold_inference_val(
@@ -47,28 +77,33 @@ def kfold_inference_val(
 
     model = define_model(
         config.name,
+        embed_dim=config.embed_dim,
+        transfo_dim=config.transfo_dim,
+        dense_dim=config.dense_dim,
+        transfo_heads=config.transfo_heads,
+        transfo_layers=config.transfo_layers,
+        drop_rate=config.drop_rate,
         num_classes=config.num_classes,
         num_classes_aux=config.num_classes_aux,
-        n_channels=config.n_channels,
-        reduce_stride=config.reduce_stride,
-        use_gem=config.use_gem,
-        pretrained=False,
-        replace_pad_conv=True,
+        n_landmarks=config.n_landmarks,
+        max_len=config.max_len,
+        verbose=(config.local_rank == 0),
     )
     model = model.cuda().eval()
 
-    weights = [f for f in sorted(glob.glob(exp_folder + "*.pt")) if "fullfit" not in f]
-    folds = [int(w[-4]) for w in weights]
-
-    save_folder = ""
-    if save:
-        save_folder = exp_folder + "npy/"
-        os.makedirs(save_folder, exist_ok=True)
-
     pred_oof = np.zeros((len(df), config.num_classes))
-    pred_oof_aux = np.zeros((len(df), config.num_classes_aux))
-    for fold in folds:
+    for fold in config.selected_folds:
         print(f"\n- Fold {fold + 1}")
+        
+        if config.model_soup:
+            weights = [f for f in sorted(glob.glob(exp_folder + f"*_{fold}_*.pt"))][-1:]
+#             weights += [f for f in sorted(glob.glob("../logs/2023-03-30/3/" + f"*_{fold}.pt")) if "fullfit" not in f]
+            print("Soup :", weights)
+            model = uniform_soup(model, weights)
+            model = model.cuda().eval()
+        else:
+            weights = [f for f in sorted(glob.glob(exp_folder + f"*_{fold}.pt"))][0]
+            model = load_model_weights(model, weights, verbose=1)
 
         val_idx = list(df[df["fold"] == fold].index)
         df_val = df.iloc[val_idx].copy().reset_index(drop=True)
@@ -76,15 +111,14 @@ def kfold_inference_val(
         if debug:
             df_val = df_val.head(4)
 
-        dataset = BreastDataset(
+        dataset = SignDataset(
             df_val,
-            transforms=get_transfos(augment=False, resize=config.resize),
+            max_len=config.max_len,
+            resize_mode=config.resize_mode,
+            train=False,
         )
 
-        weight = weights[folds.index(fold)]
-        model = load_model_weights(model, weight, verbose=1)
-
-        pred_val, pred_val_aux, fts = predict_fct(
+        pred_val, pred_val_aux = predict_fct(
             model,
             dataset,
             config.loss_config,
@@ -92,33 +126,21 @@ def kfold_inference_val(
             use_fp16=use_fp16,
         )
 
-        df_val["pred"] = pred_val
-        dfg = (
-            df_val[["patient_id", "laterality", "pred", "cancer"]]
-            .groupby(["patient_id", "laterality"])
-            .mean()
-        )
-
-        th, _, pf1 = tweak_thresholds(dfg["cancer"].values, dfg["pred"].values)
-        print(f" -> Scored {pf1 :.4f}      (th={th:.2f})")
+        acc = accuracy(df_val["target"].values, pred_val)
+        print(f"\n -> Accuracy : {acc:.4f}")
 
         if debug:
             return pred_val, pred_val_aux
 
         if save:
             np.save(exp_folder + f"pred_val_inf_{fold}.npy", pred_val)
-            if config.num_classes_aux:
-                np.save(exp_folder + f"pred_val_aux_inf_{fold}.npy", pred_val_aux)
-            if extract_fts:
-                np.save(exp_folder + f"fts_{fold}.npy", fts)
-
         pred_oof[val_idx] = pred_val
-        if config.num_classes_aux:
-            pred_oof_aux[val_idx] = pred_val_aux
 
+#         break
+
+    acc = accuracy(df["target"].values, pred_oof)
+    print(f"\n\n -> CV Accuracy : {acc:.4f}")
     if save:
         np.save(exp_folder + "pred_oof_inf.npy", pred_oof)
-        if config.num_classes_aux:
-            np.save(exp_folder + "pred_oof_aux_inf.npy", pred_oof_aux)
 
-    return pred_oof, pred_oof_aux
+    return pred_oof

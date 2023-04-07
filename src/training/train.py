@@ -10,7 +10,7 @@ from training.losses import SignLoss
 from training.optim import define_optimizer
 
 from utils.metrics import accuracy
-from utils.torch import sync_across_gpus
+from utils.torch import sync_across_gpus, save_model_weights
 
 
 def trim_tensors(data, min_len=10):
@@ -25,7 +25,6 @@ def trim_tensors(data, min_len=10):
         dict of torch tensors: Trimmed tensors.
     """
     max_len = (data["type"][:, :, 0] != 0).sum(1).max()
-#     print(max_len)
     max_len = max(max_len, min_len)
     return {k: data[k][:, :max_len].contiguous() for k in data.keys()}
 
@@ -112,9 +111,11 @@ def fit(
     epochs=1,
     verbose_eval=1,
     use_fp16=False,
+    model_soup=False,
     distributed=False,
     local_rank=0,
     world_size=1,
+    log_folder=None,
     run=None,
     fold=0,
 ):
@@ -174,6 +175,24 @@ def fit(
     avg_losses = []
     start_time = time.time()
     for epoch in range(1, epochs + 1):
+        if epoch in [50, 100, 110]:
+            if epoch == 50:
+                train_dataset.aug_strength = 2
+            elif epoch == 100:
+                train_dataset.aug_strength = 1
+            elif epoch == 110:
+                train_dataset.aug_strength = 0
+
+            train_loader, val_loader = define_loaders(
+                train_dataset,
+                val_dataset,
+                batch_size=data_config["batch_size"],
+                val_bs=data_config["val_bs"],
+                use_len_sampler=data_config["use_len_sampler"],
+                distributed=distributed,
+                world_size=world_size,
+                local_rank=local_rank,
+            )
         if distributed:
             try:
                 train_loader.sampler.set_epoch(epoch)
@@ -260,6 +279,16 @@ def fit(
                 start_time = time.time()
                 avg_losses = []
                 model.train()
+
+        if (log_folder is not None) and (local_rank == 0) and model_soup:
+            name =  model.module.name if distributed else model.name
+            if epoch >= epochs - 10:
+                save_model_weights(
+                    model.module if distributed else model,
+                    f"{name.split('/')[-1]}_{fold}_{epoch}.pt",
+                    cp_folder=log_folder,
+                    verbose=0
+                )
 
     del (train_loader, val_loader, optimizer)
     torch.cuda.empty_cache()

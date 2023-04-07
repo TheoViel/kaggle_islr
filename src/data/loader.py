@@ -19,11 +19,11 @@ class LenMatchBatchSampler(BatchSampler):
 
         for idx in self.sampler:
             try:
-                data = self.sampler.data_source[idx]
+                length = self.sampler.data_source.lens[idx]
             except AttributeError:
-                data = self.sampler.dataset[idx]
-            bucket_id = (data["type"][:, 0] != 0).sum() // 2
-#             print((data["type"][:, 0] != 0).sum())
+                length = self.sampler.dataset.lens[idx]
+            bucket_id = length // 2
+#             print(length)
 
             if len(buckets[bucket_id]) == 0:
                 buckets[bucket_id] = []

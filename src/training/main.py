@@ -31,6 +31,8 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
     Returns:
         np array [len(df_train) x num_classes]: Validation predictions.
     """
+    if config.local_rank == 0:
+        print('    -> Data Preparation')
     train_dataset = SignDataset(
         df_train,
         max_len=config.max_len,
@@ -45,6 +47,9 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
         resize_mode=config.resize_mode,
         train=False,
     )
+
+    train_dataset.fill_buffer()
+    val_dataset.fill_buffer()
 
     if config.pretrained_weights is not None:
         if config.pretrained_weights.endswith(
@@ -61,12 +66,14 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
         pretrained_weights=pretrained_weights,
         embed_dim=config.embed_dim,
         transfo_dim=config.transfo_dim,
+        dense_dim=config.dense_dim,
         transfo_heads=config.transfo_heads,
         transfo_layers=config.transfo_layers,
         drop_rate=config.drop_rate,
         num_classes=config.num_classes,
         num_classes_aux=config.num_classes_aux,
         n_landmarks=config.n_landmarks,
+        max_len=config.max_len,
         verbose=(config.local_rank == 0),
     ).cuda()
 
@@ -107,10 +114,12 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
         config.optimizer_config,
         epochs=config.epochs,
         verbose_eval=config.verbose_eval,
+        model_soup=config.model_soup,
         use_fp16=config.use_fp16,
         distributed=config.distributed,
         local_rank=config.local_rank,
         world_size=config.world_size,
+        log_folder=log_folder,
         run=run,
         fold=fold,
     )
@@ -166,6 +175,13 @@ def k_fold(config, df, df_extra=None, log_folder=None, run=None):
             
             if df_extra is not None:
                 df_train = pd.concat([df_train, df_extra], ignore_index=True)
+                
+#             df_train = df_train[df_train['participant_id'] != 29302]
+#             two_hands = np.concatenate([
+#                 np.load('../output/two_hands_others.npy'),
+#                 np.load('../output/two_hands_29302.npy')
+#             ])
+#             df_train = df_train[~df_train['sequence_id'].isin(two_hands)].reset_index(drop=True)
 
             pred_val = train(
                 config, df_train, df_val, fold, log_folder=log_folder, run=run

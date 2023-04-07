@@ -1,9 +1,10 @@
 import re
 import torch
 import numpy as np
-from torch.utils.data import Dataset
+from tqdm import tqdm
+from torch.utils.data import Dataset, DataLoader
 
-from data.transforms import augment, normalize
+from data.transforms import augment, normalize, interpolate, flip, add_missing_hand, normalize_face
 from params import TYPE_MAPPING
 
 
@@ -21,32 +22,38 @@ def crop_or_pad(data, max_len=100, mode="start"):
     
     padded = {}
     for k in data.keys():
-        coef = 0  # -10 if k in ['x', 'y', 'z'] else 0
-        padded[k] = torch.cat([data[k], coef * padding], axis=0).type(data[k].type())
-        
+        if k in ["target", "length"]:
+            padded[k] = data[k]
+        else:
+            coef = 0  # -10 if k in ['x', 'y', 'z'] else 0
+            padded[k] = torch.cat([data[k], coef * padding], axis=0).type(data[k].type())
+
     return padded
 
 
-def interpolate(data, size=50):
-    interpolated = {}
-    for k in data.keys():
-        mode = "linear" if isinstance(data[k], torch.FloatTensor) else "nearest"
-        interpolated[k] = torch.nn.functional.interpolate(
-            data[k].T.unsqueeze(0).float(), size, mode=mode
-        )[0].T.to(data[k].dtype)
-    return interpolated
+def resize(data, size=50):
+    for k in ["x", "y", "z"]:
+        data[k] = torch.nn.functional.interpolate(
+            data[k].T.unsqueeze(0), size, mode="linear"
+        )[0].T
+        
+    if "type" in data.keys():
+        data['type'] = data['type'][:1].repeat(size, 1)
+    
+    return data
 
 
-def regroup(d):
-    to_regroup = ["left_eye", "left_eyebrow", "right_eye", "right_eyebrow", "nose"]
+def is_left(data):
+    fts = torch.abs(data['x'])
+    embed = data['type'][0]
 
-    for k in to_regroup:
-        types = d[0, 0]
-        dt = d.T[types == TYPE_MAPPING[k]].T
-        d = d.T[types != TYPE_MAPPING[k]].T
-        d = np.concatenate([d, dt.mean(-1, keepdims=True)], -1)
+    left_hand = fts.T[embed == 1].T
+    right_hand = fts.T[embed == 2].T
+    
+    missing_left = (left_hand.sum(-1) == 0).sum()
+    missing_right = (right_hand.sum(-1) == 0).sum()
 
-    return d
+    return missing_left < missing_right
 
 
 class SignDataset(Dataset):
@@ -77,9 +84,84 @@ class SignDataset(Dataset):
         
         self.paths = df["processed_path"].values
         self.targets = df["target"].values
+        
+        self.buffer = {}
+        self.buffer_mode = False
+        self.lens = {}
 
     def __len__(self):
         return len(self.paths)
+    
+    def fill_buffer(self, tqdm_enabled=False):
+        self.buffer_mode = True
+        loader = DataLoader(
+            self,
+            batch_size=1024,
+            shuffle=False,
+            num_workers=8,
+            pin_memory=True,
+            collate_fn=list,
+            drop_last=False
+        )
+        for i, batch in enumerate(tqdm(loader, disable=not tqdm_enabled)):
+            for j, b in enumerate(batch):
+                self.buffer[i * 1024 + j] = b
+        
+        self.buffer_mode = False
+        
+    def mix_face(self, data, idx, p=0):
+        if np.random.random() > p:
+            return data
+
+        # Load other sample
+        other_idx = np.random.choice(list(self.df[self.df['target'] == self.targets[idx]].index))
+#         print(other_idx)
+        
+        try:
+            frames = self.buffer[other_idx]
+        except KeyError:
+            frames = np.load(self.paths[other_idx])
+            
+        # Create other data
+        landmark_embed = np.arange(frames.shape[-1])[None] + 1
+        landmark_embed = np.repeat(landmark_embed, frames.shape[0], axis=0)
+        
+        other_data = {
+            "type": torch.tensor(frames[:, 0], dtype=torch.long),
+            "landmark": torch.tensor(landmark_embed, dtype=torch.long),
+            "x": torch.tensor(frames[:, 1], dtype=torch.float),
+            "y": torch.tensor(frames[:, 2], dtype=torch.float),
+            "z": torch.tensor(frames[:, 3], dtype=torch.float),
+        }
+        
+        # Flip to same direction
+        if is_left(other_data) != is_left(data):
+            other_data = flip(other_data)
+
+        # Resize to same size
+        other_data = resize(other_data, data["x"].size(0))
+        
+        # Replace face
+        ids = torch.isin(data["type"][0], torch.tensor([3, 4, 6]))
+        replaced = torch.isin(data["type"], torch.tensor([3, 4, 6]))
+        
+        for k in ["x", "y"]:
+            new_face = other_data[k].T[ids].T
+            if (new_face.max() - new_face.min()) == 0:
+                return data  # do not apply
+                
+        for k in ["x", "y", "z"]:
+            new_face = other_data[k].T[ids].T
+            old_face = data[k].T[ids].T
+            
+            if (k == "z") and ((new_face.max() - new_face.min()) == 0):
+                return data
+            
+            other_data[k] = (other_data[k] - new_face.min()) / (new_face.max() - new_face.min())
+            other_data[k] = other_data[k] * (old_face.max() - old_face.min()) + old_face.min()
+            data[k] = torch.where(replaced, other_data[k], data[k])
+    
+        return data
 
     def __getitem__(self, idx):
         """
@@ -93,13 +175,20 @@ class SignDataset(Dataset):
             torch tensor [1]: Label.
             torch tensor [1]: Aux label.
         """
-        frames = np.load(self.paths[idx])
+        try:
+            frames = self.buffer[idx]
+        except KeyError:
+            frames = np.load(self.paths[idx])
+            self.buffer[idx] = frames
+
+        if self.buffer_mode:
+            return frames
         
-        if "processed_3/" in self.paths[idx]:
-            frames = regroup(frames)
+        length = len(frames)
+        self.lens[idx] = length
 
         landmark_embed = np.arange(frames.shape[-1])[None] + 1
-        landmark_embed = np.repeat(landmark_embed, frames.shape[0], axis=0)        
+        landmark_embed = np.repeat(landmark_embed, frames.shape[0], axis=0)
         
         data = {
             "type": torch.tensor(frames[:, 0], dtype=torch.long),
@@ -108,20 +197,32 @@ class SignDataset(Dataset):
             "y": torch.tensor(frames[:, 2], dtype=torch.float),
             "z": torch.tensor(frames[:, 3], dtype=torch.float),
         }
-        data["mask"] = torch.ones(data["x"].size())
+        
+        data["target"] = torch.tensor([self.targets[idx]], dtype=torch.float)
+        
+#         data = normalize_face(data)
 
-        if "processed_3/" in self.paths[idx]:
-            data = normalize(data)
-            
         if self.train:
+            if self.aug_strength >= 3:
+                data = self.mix_face(data, idx, p=0.25)
+                data = add_missing_hand(data, p=0.25)
+
             data = augment(data, aug_strength=self.aug_strength)
+
+#         data = add_missing_hand(data)
+#         data = normalize(data)
+
+        data["mask"] = torch.ones(data["x"].size())
+#         data["length"] = length
+            
+#         data = interpolate(data, p=1)
+#         if not is_left(data):
+#         data = flip(data, p=1)
 
         if self.max_len is not None:
             if self.resize_mode == "pad":
                 data = crop_or_pad(data, max_len=self.max_len)
             else:
-                data = interpolate(data, size=self.max_len)
-
-        data["target"] = torch.tensor([self.targets[idx]], dtype=torch.float)
+                data = resize(data, size=self.max_len)
 
         return data

@@ -272,7 +272,7 @@ def plot_sample(data, n_frames=4, figsize=(10, 10)):
     cols = np.array([[0, 0, 0, 0]] + [list(c) + [1] for c in sns.color_palette(n_colors=11)])
     
     for i, frame in enumerate(frames):
-        plt.subplot(int(np.sqrt(n_frames)), int(np.sqrt(n_frames)), i + 1)
+        plt.subplot(int(np.sqrt(n_frames)), int(n_frames / int(np.sqrt(n_frames))), i + 1)
         plt.scatter(data['x'][frame], - data['y'][frame], s=4, c=cols[data['type'][frame].numpy().astype(int)])
         plt.title(f"Frame {frame}")
 #         plt.grid()
@@ -281,15 +281,16 @@ def plot_sample(data, n_frames=4, figsize=(10, 10)):
 
     
     
-def plot_sample_with_edges(data, n_frames=4, figsize=(10, 10), show_text=False):
+def plot_sample_with_edges(data, n_frames=4, figsize=(10, 10), show_text=False, graph=GRAPH):
     frames = np.linspace(0, data['x'].shape[0], n_frames, dtype=int, endpoint=False)
+
     plt.figure(figsize=figsize)
     
     cols = np.array([[0, 0, 0, 0]] + [list(c) + [1] for c in sns.color_palette(n_colors=11)])
     
     for i, frame in enumerate(frames):
-#         frame = 10
-        plt.subplot(int(np.sqrt(n_frames)), int(np.sqrt(n_frames)), i + 1)
+
+        plt.subplot(int(np.sqrt(n_frames)), int(n_frames / int(np.sqrt(n_frames))), i + 1)
         plt.scatter(data['x'][frame], - data['y'][frame], s=4, c=cols[data['type'][frame].numpy().astype(int)])
         
         if show_text:
@@ -300,10 +301,10 @@ def plot_sample_with_edges(data, n_frames=4, figsize=(10, 10), show_text=False):
         plt.title(f"Frame {frame}")
         plt.axis(True)
     
-        for graph in GRAPH:
-            for i in range(len(graph) - 1):
-                a = graph[i]
-                b = graph[i + 1]
+        for g in graph:
+            for i in range(len(g) - 1):
+                a = g[i]
+                b = g[i + 1]
                 plt.plot([data['x'][frame][a], data['x'][frame][b]], [- data['y'][frame][a], - data['y'][frame][b]], c="k", linewidth=0.5)
 
     plt.show()

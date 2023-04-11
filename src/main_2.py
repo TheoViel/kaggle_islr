@@ -102,7 +102,7 @@ class Config:
     processed_folder = "torch_11/"
     max_len = 30
     resize_mode = "pad"
-    aug_strength = 2
+    aug_strength = 3
     use_extra_data = False
     n_landmarks = 100
 
@@ -122,8 +122,8 @@ class Config:
 
     transfo_layers = 3
     embed_dim = 16
-    dense_dim = 512
-    transfo_dim = 1024  # 288
+    dense_dim = 256
+    transfo_dim = 1024 + 256
     transfo_heads = 8
     drop_rate = 0.05
 

@@ -99,10 +99,10 @@ class Config:
     save_weights = True
 
     # Data
-    processed_folder = "torch_11/"
-    max_len = 30
+    processed_folder = "torch_12/"
+    max_len = 25
     resize_mode = "pad"
-    aug_strength = 2
+    aug_strength = 3
     use_extra_data = False
     n_landmarks = 100
 
@@ -115,7 +115,7 @@ class Config:
 #     name = "gcn"
     name = "mlp_bert_3"
 #     name = "bi_bert"
-    pretrained_weights = None  # "../logs/2023-03-27/19/mlp_bert_2_0.pt"  "../logs/pretrain/2023-03-23/4/mlp_bert_0.pt" 
+    pretrained_weights = None  # "../logs/pretrain/2023-04-08/2/mlp_bert_3_0.pt"
     syncbn = False
     num_classes = 250
     num_classes_aux = 0
@@ -124,7 +124,7 @@ class Config:
     embed_dim = 16
     dense_dim = 256
     transfo_dim = 1024  # 288
-    transfo_heads = 8
+    transfo_heads = 16
     drop_rate = 0.05
 
     # Training
@@ -144,13 +144,13 @@ class Config:
 
     optimizer_config = {
         "name": "AdamW",
-        "lr": 2e-4,
+        "lr": 3e-4,
         "warmup_prop": 0.1,
         "betas": (0.9, 0.999),
         "max_grad_norm": 10.,
     }
 
-    epochs = 120
+    epochs = 100
 
     use_fp16 = True
     model_soup = False

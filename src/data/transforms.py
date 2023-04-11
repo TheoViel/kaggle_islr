@@ -187,7 +187,7 @@ def drop_frames(data, prop=0.1, p=0.5):
 
     frames = np.arange(len(data['x']))
     to_keep = np.random.choice(frames, int((1 - prop) * len(frames)), replace=False)
-    return {k: data[k][np.sort(to_keep)] for k in data.keys()}
+    return {k: (data[k][np.sort(to_keep)] if k != "target" else data[k]) for k in data.keys()}
 
 
 def add_noise(data, snr=50, p=0.5):
@@ -259,13 +259,16 @@ def resize(data, p=0.5, max_size=50):
     return data
 
 
-def augment(data, aug_strength=3):
+def augment(data, aug_strength=0):
     if aug_strength == 3:
-        # + mixface
         data = interpolate(data, p=0.5)
         data = flip(data, p=0.5)
         data = rotate(data, p=0.5)
         data = scale(data, p=0.25)
+        
+#         data = add_noise(data, snr=50, p=0.5)
+#         data = drop_frames(data, prop=0.1, p=0.25)
+#         data = dropout(data, drop_p=0.1, p=0.25)
 
     if aug_strength == 2:
         data = interpolate(data, p=0.5)

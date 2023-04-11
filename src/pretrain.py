@@ -75,10 +75,12 @@ class Config:
     save_weights = True
 
     # Data
-    processed_folder = "torch_3_wlasl/"
-    max_len = 40
+    processed_folder = "torch_11_wlasl/"
+    max_len = 30
     resize_mode = "pad"
-    aug_strength = 1
+    aug_strength = 3
+    use_extra_data = False
+    n_landmarks = 100
 
     # k-fold
     k = 4
@@ -86,22 +88,24 @@ class Config:
     selected_folds = [0, 1, 2, 3]
 
     # Model
-    name = "mlp_bert"
+    name = "mlp_bert_3"
 #     name = "cnn_bert"
 #     name = "bi_bert"
     pretrained_weights = None
     syncbn = False
     num_classes = 2000
+    num_classes_aux = 0
 
-    transfo_layers = 4
-    embed_dim = 32
-    transfo_dim = 384  # 288
-    transfo_heads = 8
-    drop_rate = 0.1
+    transfo_layers = 3
+    embed_dim = 16
+    dense_dim = 256
+    transfo_dim = 1024  # 288
+    transfo_heads = 16
+    drop_rate = 0.05
 
     # Training
     loss_config = {
-        "name": "ce",
+        "name": "ce",  # ce
         "smoothing": 0.3,
         "activation": "softmax",
         "aux_loss_weight": 0.,
@@ -110,21 +114,22 @@ class Config:
 
     data_config = {
         "batch_size": 32,
-        "val_bs": 32,
+        "val_bs": 1024,
         "use_len_sampler": False,  # trimming is still slower, fix ?
     }
 
     optimizer_config = {
         "name": "AdamW",
-        "lr": 5e-4,
+        "lr": 2e-4,
         "warmup_prop": 0.1,
         "betas": (0.9, 0.999),
         "max_grad_norm": 10.,
     }
 
-    epochs = 60
+    epochs = 120
 
     use_fp16 = True
+    model_soup = False
 
     verbose = 1
     verbose_eval = 250
@@ -188,8 +193,10 @@ if __name__ == "__main__":
     from training.main import train
 
 #     df = df.head(10000).reset_index(drop=True)
-    df = pd.read_csv(DATA_PATH + 'df_wsasl.csv').sample(frac=1, random_state=config.seed)
-    
+    df = pd.read_csv(DATA_PATH + 'df_wsasl.csv').sample(
+        frac=1, random_state=config.seed
+    ).reset_index(drop=True)
+
     df['processed_path'] = DATA_PATH + config.processed_folder + df['processed_path']
 
     train(config, df.head(len(df) - 1000), df.tail(1000), 0, log_folder=log_folder, run=run)

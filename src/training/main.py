@@ -8,6 +8,7 @@ from torch.nn.parallel import DistributedDataParallel
 
 from params import DATA_PATH
 from training.train import fit
+# from training.pretrain import fit
 from model_zoo.models import define_model
 
 from data.dataset import SignDataset
@@ -48,8 +49,9 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
         train=False,
     )
 
-    train_dataset.fill_buffer()
-    val_dataset.fill_buffer()
+    if config.epochs > 10:
+        train_dataset.fill_buffer()
+        val_dataset.fill_buffer()
 
     if config.pretrained_weights is not None:
         if config.pretrained_weights.endswith(
@@ -85,6 +87,7 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
             model,
             device_ids=[config.local_rank],
             find_unused_parameters=False,
+#             find_unused_parameters=True,
             broadcast_buffers=config.syncbn,
         )
 

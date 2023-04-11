@@ -7,26 +7,10 @@ from transformers import get_linear_schedule_with_warmup
 
 from data.loader import define_loaders
 from training.losses import SignLoss
-from training.optim import define_optimizer
+from training.optim import define_optimizer, freeze
 
 from utils.metrics import accuracy
 from utils.torch import sync_across_gpus, save_model_weights
-
-
-def trim_tensors(data, min_len=10):
-    """
-    Trim tensors so that within a batch, padding is shortened.
-    This speeds up training for RNNs and Transformers.
-
-    Args:
-        data (dict of torch tensors): Batch.
-        min_len (int, optional): Minimum trimming size. Defaults to 10.
-    Returns:
-        dict of torch tensors: Trimmed tensors.
-    """
-    max_len = (data["type"][:, :, 0] != 0).sum(1).max()
-    max_len = max(max_len, min_len)
-    return {k: data[k][:, :max_len].contiguous() for k in data.keys()}
 
 
 def evaluate(
@@ -65,40 +49,22 @@ def evaluate(
         for data in val_loader:
             for k in data.keys():
                 data[k] = data[k].cuda()
-#             data = trim_tensors(data)
 
             with torch.cuda.amp.autocast(enabled=use_fp16):
-                y_pred, y_pred_aux = model(data)
-                loss = loss_fct(y_pred.detach(), y_pred_aux.detach(), data['target'], 0)
-
+                loss = model(data)
             val_losses.append(loss.detach())
 
-            if loss_config["activation"] == "sigmoid":
-                y_pred = y_pred.sigmoid()
-            elif loss_config["activation"] == "softmax":
-                y_pred = y_pred.softmax(-1)
-
-            preds.append(y_pred.detach())
-            preds_aux.append(y_pred_aux.detach())
-
     val_losses = torch.stack(val_losses)
-    preds = torch.cat(preds, 0)
-    preds_aux = torch.cat(preds_aux, 0)
 
     if distributed:
         val_losses = sync_across_gpus(val_losses, world_size)
-        preds = sync_across_gpus(preds, world_size)
-        if model.module.num_classes_aux:
-            preds_aux = sync_across_gpus(preds_aux, world_size)
         torch.distributed.barrier()
 
     if local_rank == 0:
-        preds = preds.cpu().numpy()
-        preds_aux = preds_aux.cpu().numpy()
         val_loss = val_losses.cpu().numpy().mean()
-        return preds, preds_aux, val_loss
+        return val_loss
     else:
-        return 0, 0, 0
+        return 0
 
 
 def fit(
@@ -174,9 +140,10 @@ def fit(
     acc = 0
     avg_losses = []
     start_time = time.time()
+
     for epoch in range(1, epochs + 1):
-        if epoch in [epochs // 2, 100, 110]:
-            if epoch == (epochs // 2):
+        if epoch in [50, 100, 110]:
+            if epoch == 50:
                 train_dataset.aug_strength = 2
             elif epoch == 100:
                 train_dataset.aug_strength = 1
@@ -198,6 +165,8 @@ def fit(
                 train_loader.sampler.set_epoch(epoch)
             except AttributeError:
                 train_loader.batch_sampler.sampler.set_epoch(epoch)
+                
+        freeze(model, "encoder")
 
         for data in train_loader:
             for k in data.keys():
@@ -205,9 +174,9 @@ def fit(
 #             data = trim_tensors(data)
 
             with torch.cuda.amp.autocast(enabled=use_fp16):
-                y_pred, y_pred_aux = model(data)
-                loss = loss_fct(y_pred, y_pred_aux, data['target'], 0)
-                
+                loss = model(data)
+#                 loss = loss_fct(y_pred, y_pred_aux, data['target'], 0)
+
 #             if not (step % 10):
 #                 print(step, loss.item(), y_pred.mean().item())
 
@@ -243,7 +212,7 @@ def fit(
                     avg_losses = sync_across_gpus(avg_losses, world_size)
                 avg_loss = avg_losses.cpu().numpy().mean()
 
-                preds, preds_aux, avg_val_loss = evaluate(
+                avg_val_loss = evaluate(
                     model,
                     val_loader,
                     loss_config,
@@ -255,8 +224,8 @@ def fit(
                 )
 
                 if local_rank == 0:
-                    preds = preds[: len(val_dataset)]
-                    acc = accuracy(val_dataset.targets, preds.argmax(-1))
+#                     preds = preds[: len(val_dataset)]
+#                     acc = accuracy(val_dataset.targets, preds.argmax(-1))
 
                     dt = time.time() - start_time
                     lr = scheduler.get_last_lr()[0]
@@ -279,6 +248,8 @@ def fit(
                 start_time = time.time()
                 avg_losses = []
                 model.train()
+                
+                freeze(model, "encoder")
 
         if (log_folder is not None) and (local_rank == 0) and model_soup:
             name =  model.module.name if distributed else model.name
@@ -297,4 +268,5 @@ def fit(
     if distributed:
         torch.distributed.barrier()
 
+    preds = np.zeros((len(val_dataset), 250))
     return preds

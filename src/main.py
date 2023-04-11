@@ -109,7 +109,7 @@ class Config:
     # k-fold
     k = 4
     folds_file = f"../input/folds_{k}.csv"
-    selected_folds = [0, 1, 2, 3]
+    selected_folds = [0]  # , 1, 2, 3]
 
     # Model
 #     name = "gcn"
@@ -125,7 +125,7 @@ class Config:
     dense_dim = 256
     transfo_dim = 1024  # 288
     transfo_heads = 16
-    drop_rate = 0.05
+    drop_rate = 0.1
 
     # Training
     loss_config = {
@@ -145,7 +145,7 @@ class Config:
     optimizer_config = {
         "name": "AdamW",
         "lr": 3e-4,
-        "warmup_prop": 0.1,
+        "warmup_prop": 0.,
         "betas": (0.9, 0.999),
         "max_grad_norm": 10.,
     }

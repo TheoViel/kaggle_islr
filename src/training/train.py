@@ -175,8 +175,8 @@ def fit(
     avg_losses = []
     start_time = time.time()
     for epoch in range(1, epochs + 1):
-        if epoch in [50, 100, 110]:
-            if epoch == 50:
+        if epoch in [epochs // 2, 100, 110]:
+            if epoch == epochs // 2:
                 train_dataset.aug_strength = 2
             elif epoch == 100:
                 train_dataset.aug_strength = 1

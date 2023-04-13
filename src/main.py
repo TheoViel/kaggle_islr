@@ -109,7 +109,7 @@ class Config:
     # k-fold
     k = 4
     folds_file = f"../input/folds_{k}.csv"
-    selected_folds = [0, 1, 2, 3]
+    selected_folds = [0]  # , 1, 2, 3]
 
     # Model
 #     name = "gcn"
@@ -134,12 +134,13 @@ class Config:
         "activation": "softmax",
         "aux_loss_weight": 0.,
         "activation_aux": "softmax",
+        "ousm_k": 3,
     }
 
     data_config = {
         "batch_size": 32,
         "val_bs": 1024,
-        "use_len_sampler": False,  # trimming is still slower, fix ?
+        "use_len_sampler": False,
     }
 
     optimizer_config = {

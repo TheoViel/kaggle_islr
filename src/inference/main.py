@@ -50,7 +50,7 @@ def kfold_inference_val(
     save=True,
     use_tta=False,
     use_fp16=False,
-    extract_fts=False
+    train=False
 ):
     """
     Main inference function for validation data.
@@ -91,7 +91,7 @@ def kfold_inference_val(
     )
     model = model.cuda().eval()
 
-    pred_oof = np.zeros((len(df), config.num_classes))
+    pred_oof = np.zeros((config.k, len(df), config.num_classes))
     for fold in config.selected_folds:
         print(f"\n- Fold {fold + 1}")
         
@@ -105,7 +105,10 @@ def kfold_inference_val(
             weights = [f for f in sorted(glob.glob(exp_folder + f"*_{fold}.pt"))][0]
             model = load_model_weights(model, weights, verbose=1)
 
-        val_idx = list(df[df["fold"] == fold].index)
+        if train:
+            val_idx = list(df[df["fold"] != fold].index)
+        else:
+            val_idx = list(df[df["fold"] == fold].index)
         df_val = df.iloc[val_idx].copy().reset_index(drop=True)
 
         if debug:
@@ -134,9 +137,13 @@ def kfold_inference_val(
 
         if save:
             np.save(exp_folder + f"pred_val_inf_{fold}.npy", pred_val)
-        pred_oof[val_idx] = pred_val
+            
+        pred_oof[fold, val_idx] = pred_val
 
 #         break
+
+    if not train:
+        pred_oof = pred_oof.sum(0)
 
     acc = accuracy(df["target"].values, pred_oof)
     print(f"\n\n -> CV Accuracy : {acc:.4f}")

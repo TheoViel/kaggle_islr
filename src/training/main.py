@@ -47,9 +47,10 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
         resize_mode=config.resize_mode,
         train=False,
     )
-
-    train_dataset.fill_buffer()
-    val_dataset.fill_buffer()
+    
+    if config.epochs > 10:
+        train_dataset.fill_buffer()
+        val_dataset.fill_buffer()
 
     if config.pretrained_weights is not None:
         if config.pretrained_weights.endswith(
@@ -155,6 +156,14 @@ def k_fold(config, df, df_extra=None, log_folder=None, run=None):
     if "fold" not in df.columns:
         folds = pd.read_csv(config.folds_file)
         df = df.merge(folds, how="left", on=["participant_id", "sequence_id"])
+        
+    # Train oof for confidence
+#     oof = np.load("../logs/2023-04-11/27/pred_oof_train.npy")
+    oof = np.stack([np.load("../logs/2023-04-09/2/pred_oof.npy") for _ in range(config.k)], 0)  # LEAKY ?
+    oof_ = [oof[:, i, j] for i, j in enumerate(df['target'].values)]
+    oof_ = np.stack(oof_).T
+    for i in range(len(oof_)):
+        df[f'pred_{i}'] = oof_[i]
 
     pred_oof = np.zeros((len(df), config.num_classes))
     for fold in range(config.k):
@@ -175,7 +184,11 @@ def k_fold(config, df, df_extra=None, log_folder=None, run=None):
             
             if df_extra is not None:
                 df_train = pd.concat([df_train, df_extra], ignore_index=True)
-                
+            
+#             df_train = df_train[
+#                 df_train[f'pred_{fold}'] > np.percentile(df_train[f'pred_{fold}'], 10)
+#             ].reset_index(drop=True)
+
 #             df_train = df_train[df_train['participant_id'] != 29302]
 #             two_hands = np.concatenate([
 #                 np.load('../output/two_hands_others.npy'),

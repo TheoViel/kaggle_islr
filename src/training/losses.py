@@ -27,6 +27,7 @@ class ConsistencyLoss(nn.Module):
         loss = ((student_pred - teacher_pred) ** 2).sum(-1)
 
         w = self.get_consistency_weight(step)
+#         print(step, "/", self.rampup_length, w)
 
         return w * loss.mean()
 

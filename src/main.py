@@ -110,7 +110,7 @@ class Config:
     # k-fold
     k = 4
     folds_file = f"../input/folds_{k}.csv"
-    selected_folds = [0]  # , 1, 2, 3]
+    selected_folds = [0, 1, 2, 3]
 
     # Model
     #     name = "gcn"
@@ -150,6 +150,12 @@ class Config:
         "warmup_prop": 0.1,
         "betas": (0.9, 0.999),
         "max_grad_norm": 10.0,
+    }
+
+    mt_config = {
+        "ema_decay": 0.98,  # 0.99
+        "consistency_weight": 3,
+        "rampup_prop": 0.25,
     }
 
     epochs = 100

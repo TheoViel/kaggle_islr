@@ -44,7 +44,7 @@ def uniform_soup(model, weights, device="cpu", by_name=False):
 
 
 def kfold_inference_val(
-    df, exp_folder, debug=False, save=True, use_tta=False, use_fp16=False, train=False
+    df, exp_folder, debug=False, save=True, use_tta=False, use_fp16=False, train=False, use_mt=False
 ):
     """
     Main inference function for validation data.
@@ -90,7 +90,7 @@ def kfold_inference_val(
         print(f"\n- Fold {fold + 1}")
 
         if config.model_soup:
-            weights = [f for f in sorted(glob.glob(exp_folder + f"*_{fold}_*.pt"))][-1:]
+            weights = [f for f in sorted(glob.glob(exp_folder + f"{config.name}_{fold}_*.pt"))][-1:]
             # weights += [
             #     f for f in sorted(glob.glob("../logs/2023-03-30/3/" + f"*_{fold}.pt"))
             #     if "fullfit" not in f
@@ -99,7 +99,10 @@ def kfold_inference_val(
             model = uniform_soup(model, weights)
             model = model.cuda().eval()
         else:
-            weights = [f for f in sorted(glob.glob(exp_folder + f"*_{fold}.pt"))][0]
+            if use_mt:
+                weights = exp_folder + f"{config.name}_teacher_{fold}.pt"
+            else:
+                weights = exp_folder + f"{config.name}_{fold}.pt"
             model = load_model_weights(model, weights, verbose=1)
 
         if train:

@@ -108,13 +108,6 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
             broadcast_buffers=config.syncbn,
         )
 
-        model_teacher = DistributedDataParallel(
-            model_teacher,
-            device_ids=[config.local_rank],
-            find_unused_parameters=True,
-            broadcast_buffers=config.syncbn,
-        )
-
     try:
         model = torch.compile(model, mode="reduce-overhead")
         if config.local_rank == 0:
@@ -140,6 +133,7 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
         config.data_config,
         config.loss_config,
         config.optimizer_config,
+        config.mt_config,
         epochs=config.epochs,
         verbose_eval=config.verbose_eval,
         model_soup=config.model_soup,

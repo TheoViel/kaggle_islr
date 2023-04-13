@@ -95,8 +95,12 @@ def evaluate(
     if distributed:
         val_losses = sync_across_gpus(val_losses, world_size)
         preds = sync_across_gpus(preds, world_size)
-        if model.module.num_classes_aux:
-            preds_aux = sync_across_gpus(preds_aux, world_size)
+        try:
+            if model.module.num_classes_aux:
+                preds_aux = sync_across_gpus(preds_aux, world_size)
+        except AttributeError:
+            if model.num_classes_aux:
+                preds_aux = sync_across_gpus(preds_aux, world_size)
         torch.distributed.barrier()
 
     if local_rank == 0:
@@ -116,6 +120,7 @@ def fit(
     data_config,
     loss_config,
     optimizer_config,
+    mt_config,
     epochs=1,
     verbose_eval=1,
     use_fp16=False,
@@ -176,21 +181,19 @@ def fit(
         optimizer, num_warmup_steps, num_training_steps
     )
 
-    mt_config = {
-        "ema_decay": 0.995,
-        "consistency_weight": 1,
-        "rampup_length": int(num_training_steps * 0.25),
-    }
     loss_fct = SignLoss(loss_config)
+
+    mt_config["rampup_length"] = int(num_training_steps * mt_config["rampup_prop"])
     consistency_loss = ConsistencyLoss(mt_config)
 
     step = 1
     acc = 0
+    acc_teach = 0
     avg_losses = []
     start_time = time.time()
     for epoch in range(1, epochs + 1):
-        if epoch in [epochs // 2, 100, 110]:
-            if epoch == epochs // 2:
+        if epoch in [min(50, epochs // 2), 100, 110]:
+            if epoch == min(50, epochs // 2):
                 train_dataset.aug_strength = 2
             elif epoch == 100:
                 train_dataset.aug_strength = 1
@@ -216,10 +219,13 @@ def fit(
         for data, data_teacher in train_loader:
             for k in data.keys():
                 data[k] = data[k].cuda()
+                data_teacher[k] = data_teacher[k].cuda()
 
             with torch.cuda.amp.autocast(enabled=use_fp16):
                 y_pred, y_pred_aux = model(data)
-                y_pred_teacher, y_pred_aux_teacher = model_teacher(data_teacher)
+
+                with torch.no_grad():
+                    y_pred_teacher, y_pred_aux_teacher = model_teacher(data_teacher)
 
                 loss = loss_fct(y_pred, y_pred_aux, data["target"], 0)
                 loss += consistency_loss(y_pred, y_pred_teacher, step)
@@ -238,12 +244,12 @@ def fit(
             scale = scaler.get_scale()
             scaler.update()
 
-            update_teacher_params(model, model_teacher, mt_config["ema_decay"], step)
-
             model.zero_grad(set_to_none=True)
 
             if distributed:
                 torch.cuda.synchronize()
+
+            update_teacher_params(model, model_teacher, mt_config["ema_decay"], step)
 
             if scale == scaler.get_scale():
                 scheduler.step()
@@ -269,9 +275,27 @@ def fit(
                     local_rank=local_rank,
                 )
 
+                if (step - 1) >= (epochs * len(train_loader) * 0.5):
+                    preds_teach, _, _ = evaluate(
+                        model_teacher,
+                        val_loader,
+                        loss_config,
+                        loss_fct,
+                        use_fp16=use_fp16,
+                        distributed=distributed,
+                        world_size=world_size,
+                        local_rank=local_rank,
+                    )
+                else:
+                    preds_teach = None
+
                 if local_rank == 0:
                     preds = preds[: len(val_dataset)]
                     acc = accuracy(val_dataset.targets, preds.argmax(-1))
+
+                    if preds_teach is not None:
+                        preds_teach = preds_teach[: len(val_dataset)]
+                        acc_teach = accuracy(val_dataset.targets, preds_teach.argmax(-1))
 
                     dt = time.time() - start_time
                     lr = scheduler.get_last_lr()[0]
@@ -281,6 +305,7 @@ def fit(
                     s = s + f"lr={lr:.1e} \t t={dt:.0f}s  \t loss={avg_loss:.3f}"
                     s = s + f"\t val_loss={avg_val_loss:.3f}" if avg_val_loss else s
                     s = s + f"    acc={acc:.3f}" if acc else s
+                    s = s + f"    acc_teach={acc_teach:.3f}" if acc_teach else s
 
                     print(s)
 
@@ -290,6 +315,8 @@ def fit(
                     run[f"fold_{fold}/train/lr"].log(lr, step=step_)
                     run[f"fold_{fold}/val/loss"].log(avg_val_loss, step=step_)
                     run[f"fold_{fold}/val/acc"].log(acc, step=step_)
+                    if acc_teach:
+                        run[f"fold_{fold}/val/acc_teach"].log(acc_teach, step=step_)
 
                 start_time = time.time()
                 avg_losses = []
@@ -305,6 +332,14 @@ def fit(
                     cp_folder=log_folder,
                     verbose=0,
                 )
+
+    if (log_folder is not None) and (local_rank == 0):
+        save_model_weights(
+            model_teacher,
+            f"{model_teacher.name.split('/')[-1]}_teacher_{fold}.pt",
+            cp_folder=log_folder,
+            verbose=0
+        )
 
     del (train_loader, val_loader, optimizer)
     torch.cuda.empty_cache()

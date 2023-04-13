@@ -68,9 +68,15 @@ def load_model_weights(model, filename, verbose=1, cp_folder="", strict=True):
         try:  # REMOVE CLASSIFIER
             state_dict_ = copy.deepcopy(state_dict)
             try:
-                del state_dict_["encoder.classifier.weight"], state_dict_["encoder.classifier.bias"]
+                del (
+                    state_dict_["encoder.classifier.weight"],
+                    state_dict_["encoder.classifier.bias"],
+                )
             except KeyError:
-                del state_dict_["encoder.head.fc.weight"], state_dict_["encoder.head.fc.bias"]
+                del (
+                    state_dict_["encoder.head.fc.weight"],
+                    state_dict_["encoder.head.fc.bias"],
+                )
             model.load_state_dict(state_dict_, strict=strict)
         except BaseException:  # REMOVE LOGITS
             try:

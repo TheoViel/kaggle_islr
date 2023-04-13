@@ -62,15 +62,15 @@ def compute_finger_face_distance(x):
     y_r = x[:, :, :, 1].T[FINGER_TIPS_R].T.unsqueeze(-1)
     y_l = x[:, :, :, 1].T[FINGER_TIPS_L].T.unsqueeze(-1)
     y_f = x[:, :, :, 1].T[FACE].T.unsqueeze(-2)
-    
+
     d_l = (x_l - x_f) ** 2 + (y_l - y_f) ** 2
     d_r = (x_r - x_f) ** 2 + (y_r - y_f) ** 2
-    
-    mask_r = (x_r ** 2 + y_r ** 2) > 0
-    mask_l = (x_l ** 2 + y_l ** 2) > 0
-    
+
+    mask_r = (x_r**2 + y_r**2) > 0
+    mask_l = (x_l**2 + y_l**2) > 0
+
     d = (d_l * mask_l) + (d_r * mask_r)
-    
+
     return d.view(d.size(0), d.size(1), -1)  # bs x n_frames x 50
 
 
@@ -120,12 +120,8 @@ def compute_hand_to_face_distances(x, embed):
     left_hand = x.view(-1, n_fts)[embed == 5].view(bs, n_frames, -1, n_fts)
     right_hand = x.view(-1, n_fts)[embed == 10].view(bs, n_frames, -1, n_fts)
 
-    left_dists = (
-        ((left_hand.unsqueeze(-2) - face.unsqueeze(-3)) ** 2).sum(-1).sqrt()
-    )
-    right_dists = (
-        ((right_hand.unsqueeze(-2) - face.unsqueeze(-3)) ** 2).sum(-1).sqrt()
-    )
+    left_dists = ((left_hand.unsqueeze(-2) - face.unsqueeze(-3)) ** 2).sum(-1).sqrt()
+    right_dists = ((right_hand.unsqueeze(-2) - face.unsqueeze(-3)) ** 2).sum(-1).sqrt()
 
     return torch.cat([left_dists, right_dists], -1).view(bs, n_frames, -1)
 

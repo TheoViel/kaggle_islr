@@ -1,8 +1,8 @@
 import gc
 import time
 import torch
-import numpy as np
-from tqdm import tqdm
+# import numpy as np
+# from tqdm import tqdm
 from transformers import get_linear_schedule_with_warmup
 
 from data.loader import define_loaders
@@ -65,11 +65,11 @@ def evaluate(
         for data in val_loader:
             for k in data.keys():
                 data[k] = data[k].cuda()
-#             data = trim_tensors(data)
+            #             data = trim_tensors(data)
 
             with torch.cuda.amp.autocast(enabled=use_fp16):
                 y_pred, y_pred_aux = model(data)
-                loss = loss_fct(y_pred.detach(), y_pred_aux.detach(), data['target'], 0)
+                loss = loss_fct(y_pred.detach(), y_pred_aux.detach(), data["target"], 0)
 
             val_losses.append(loss.detach())
 
@@ -202,14 +202,14 @@ def fit(
         for data in train_loader:
             for k in data.keys():
                 data[k] = data[k].cuda()
-#             data = trim_tensors(data)
+            #             data = trim_tensors(data)
 
             with torch.cuda.amp.autocast(enabled=use_fp16):
                 y_pred, y_pred_aux = model(data)
-                loss = loss_fct(y_pred, y_pred_aux, data['target'], 0)
-                
-#             if not (step % 10):
-#                 print(step, loss.item(), y_pred.mean().item())
+                loss = loss_fct(y_pred, y_pred_aux, data["target"], 0)
+
+            #             if not (step % 10):
+            #                 print(step, loss.item(), y_pred.mean().item())
 
             scaler.scale(loss).backward()
             avg_losses.append(loss.detach())
@@ -281,13 +281,13 @@ def fit(
                 model.train()
 
         if (log_folder is not None) and (local_rank == 0) and model_soup:
-            name =  model.module.name if distributed else model.name
+            name = model.module.name if distributed else model.name
             if epoch >= epochs - 10:
                 save_model_weights(
                     model.module if distributed else model,
                     f"{name.split('/')[-1]}_{fold}_{epoch}.pt",
                     cp_folder=log_folder,
-                    verbose=0
+                    verbose=0,
                 )
 
     del (train_loader, val_loader, optimizer)

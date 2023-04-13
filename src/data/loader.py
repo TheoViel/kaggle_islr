@@ -1,4 +1,3 @@
-import torch
 import numpy as np
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import Sampler, BatchSampler, RandomSampler
@@ -13,6 +12,7 @@ class LenMatchBatchSampler(BatchSampler):
     Custom PyTorch Sampler that generate batches of similar length.
     Helps speed up training.
     """
+
     def __iter__(self):
         buckets = [[]] * 1000
         yielded = 0
@@ -23,7 +23,7 @@ class LenMatchBatchSampler(BatchSampler):
             except AttributeError:
                 length = self.sampler.dataset.lens[idx]
             bucket_id = length // 2
-#             print(length)
+            #             print(length)
 
             if len(buckets[bucket_id]) == 0:
                 buckets[bucket_id] = []
@@ -129,7 +129,9 @@ def define_loaders(
             sampler = RandomSampler(train_dataset)
 
         len_sampler = LenMatchBatchSampler(
-            sampler, batch_size=batch_size, drop_last=True,
+            sampler,
+            batch_size=batch_size,
+            drop_last=True,
         )
         train_loader = DataLoader(
             train_dataset,
@@ -140,7 +142,7 @@ def define_loaders(
             collate_fn=None,
             persistent_workers=True,
         )
-#         print('!!')
+    #         print('!!')
 
     else:
         train_loader = DataLoader(

@@ -90,11 +90,7 @@ def define_optimizer(model, name, lr=1e-3, weight_decay=0, betas=(0.9, 0.999)):
         no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
         opt_params = []
         for n, p in model.named_parameters():
-            wd = (
-                0
-                if any(nd in n for nd in no_decay)
-                else weight_decay
-            )
+            wd = 0 if any(nd in n for nd in no_decay) else weight_decay
             opt_params.append(
                 {
                     "params": [p],

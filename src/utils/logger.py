@@ -38,7 +38,7 @@ class Logger(object):
     def flush(self):
         for f in self.files:
             f.flush()
-            
+
     def close(self):
         pass
 

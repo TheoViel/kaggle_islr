@@ -1,11 +1,12 @@
-import torch
+# import torch
 import torch.nn as nn
-
 from torch import Tensor
-from typing import Any, Callable, List, Optional, Type, Union
+from typing import Callable, List, Optional, Type, Union
 
 
-def conv3x3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv1d:
+def conv3x3(
+    in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1
+) -> nn.Conv1d:
     """3x3 convolution with padding"""
     return nn.Conv1d(
         in_planes,
@@ -19,7 +20,9 @@ def conv3x3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, d
     )
 
 
-def conv5x5(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv1d:
+def conv5x5(
+    in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1
+) -> nn.Conv1d:
     """5x5 convolution with padding"""
     dil_pad = {1: 2, 2: 4, 4: 8, 8: 16}
     return nn.Conv1d(
@@ -115,7 +118,7 @@ class Bottleneck(nn.Module):
         # Both self.conv2 and self.downsample layers downsample the input when stride != 1
         self.conv1 = conv1x1(inplanes, width)
         self.bn1 = norm_layer(width)
-#         self.conv2 = conv3x3(width, width, stride, groups, dilation)
+        #         self.conv2 = conv3x3(width, width, stride, groups, dilation)
         self.conv2 = conv5x5(width, width, stride, groups, dilation)
         self.bn2 = norm_layer(width)
         self.conv3 = conv1x1(width, planes * self.expansion)
@@ -123,7 +126,7 @@ class Bottleneck(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
-        
+
         self.dropout = nn.Dropout(0.1)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -151,7 +154,7 @@ class Bottleneck(nn.Module):
 
         return out
 
-    
+
 class ResNet(nn.Module):
     def __init__(
         self,
@@ -175,7 +178,9 @@ class ResNet(nn.Module):
 
         self.layers = []
         for i in range(self.n_layers):
-            self.layers.append(self._make_layer(block, ft_dim, layers[i], stride=2, dilate=True))
+            self.layers.append(
+                self._make_layer(block, ft_dim, layers[i], stride=2, dilate=True)
+            )
         self.layers = nn.ModuleList(self.layers)
 
         for m in self.modules():
@@ -216,7 +221,14 @@ class ResNet(nn.Module):
         layers = []
         layers.append(
             block(
-                self.inplanes, planes, stride, downsample, self.groups, self.base_width, previous_dilation, norm_layer
+                self.inplanes,
+                planes,
+                stride,
+                downsample,
+                self.groups,
+                self.base_width,
+                previous_dilation,
+                norm_layer,
             )
         )
         self.inplanes = planes * block.expansion
@@ -236,5 +248,5 @@ class ResNet(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         for layer in self.layers:
             x = layer(x)
-#             print(x.size())
+        #             print(x.size())
         return x

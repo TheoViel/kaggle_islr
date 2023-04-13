@@ -24,7 +24,7 @@
 # import torch_performance_linter
 
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 import time
 import torch
@@ -92,6 +92,7 @@ class Config:
     """
     Parameters used for training
     """
+
     # General
     seed = 42
     verbose = 1
@@ -112,9 +113,9 @@ class Config:
     selected_folds = [0]  # , 1, 2, 3]
 
     # Model
-#     name = "gcn"
+    #     name = "gcn"
     name = "mlp_bert_3"
-#     name = "bi_bert"
+    #     name = "bi_bert"
     pretrained_weights = None  # "../logs/pretrain/2023-04-08/2/mlp_bert_3_0.pt"
     syncbn = False
     num_classes = 250
@@ -132,7 +133,7 @@ class Config:
         "name": "ce",  # ce
         "smoothing": 0.3,
         "activation": "softmax",
-        "aux_loss_weight": 0.,
+        "aux_loss_weight": 0.0,
         "activation_aux": "softmax",
         "ousm_k": 3,
     }
@@ -148,7 +149,7 @@ class Config:
         "lr": 3e-4,
         "warmup_prop": 0.1,
         "betas": (0.9, 0.999),
-        "max_grad_norm": 10.,
+        "max_grad_norm": 10.0,
     }
 
     epochs = 100
@@ -189,8 +190,6 @@ if __name__ == "__main__":
 
     if args.model:
         config.name = args.model
-        if config.pretrained_weights is not None:
-            config.pretrained_weights = PRETRAINED_WEIGHTS.get(args.model, None)
 
     if args.epochs:
         config.epochs = args.epochs
@@ -237,13 +236,12 @@ if __name__ == "__main__":
 
     from training.main import k_fold
 
-
     df_extra = None
     if config.use_extra_data:
         df_extra = prepare_wsasl(DATA_PATH, config.processed_folder[:-1] + "_wlasl/")
-    
+
     #     df = df.head(10000).reset_index(drop=True)
-    
+
     k_fold(Config, df, df_extra=df_extra, log_folder=log_folder, run=run)
 
     if config.local_rank == 0:

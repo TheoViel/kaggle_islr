@@ -8,6 +8,7 @@ class SmoothCrossEntropyLoss(nn.Module):
     """
     Cross-entropy loss with label smoothing.
     """
+
     def __init__(self, eps=0.0):
         """
         Constructor.
@@ -31,7 +32,9 @@ class SmoothCrossEntropyLoss(nn.Module):
 
         if self.eps > 0:
             n_class = inputs.size(1)
-            targets = targets * (1 - self.eps) + (1 - targets) * self.eps / (n_class - 1)
+            targets = targets * (1 - self.eps) + (1 - targets) * self.eps / (
+                n_class - 1
+            )
 
         loss = -targets * F.log_softmax(inputs, dim=1)
         loss = loss.sum(-1)
@@ -46,19 +49,18 @@ class SignLoss(nn.Module):
         self.device = device
 
         self.aux_loss_weight = config["aux_loss_weight"]
-        self.ousm_k = config.get('ousm_k', 0)
+        self.ousm_k = config.get("ousm_k", 0)
         self.eps = config.get("smoothing", 0)
 
         if config["name"] == "bce":
             self.loss = nn.BCEWithLogitsLoss(reduction="none")
         elif config["name"] == "ce":
             self.loss = SmoothCrossEntropyLoss(eps=self.eps)
-        elif config["name"] == "supcon":
-#             print("supcon")
-            self.loss = SupConLoss()
+        else:
+            raise NotImplementedError
 
         self.loss_aux = nn.MSELoss(reduction="none")
-        self.embed = torch.from_numpy(np.load('../output/embed.npy')).to(device)
+        self.embed = torch.from_numpy(np.load("../output/embed.npy")).to(device)
 
     def prepare(self, pred, y):
         """
@@ -73,7 +75,7 @@ class SignLoss(nn.Module):
         """
         if self.config["name"] in ["ce", "supcon"]:
             y = y.view(-1).long()
-        
+
         else:
             y = y.float()
             pred = pred.float().view(y.size())

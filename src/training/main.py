@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 from torch.nn.parallel import DistributedDataParallel
 
-from params import DATA_PATH
 from training.train import fit
 from model_zoo.models import define_model
 
@@ -32,7 +31,7 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
         np array [len(df_train) x num_classes]: Validation predictions.
     """
     if config.local_rank == 0:
-        print('    -> Data Preparation')
+        print("    -> Data Preparation")
     train_dataset = SignDataset(
         df_train,
         max_len=config.max_len,
@@ -47,7 +46,7 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
         resize_mode=config.resize_mode,
         train=False,
     )
-    
+
     if config.epochs > 10:
         train_dataset.fill_buffer()
         val_dataset.fill_buffer()
@@ -58,7 +57,9 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
         ) or config.pretrained_weights.endswith(".bin"):
             pretrained_weights = config.pretrained_weights
         else:  # folder
-            pretrained_weights = glob.glob(config.pretrained_weights + f"*_{fold}.pt")[0]
+            pretrained_weights = glob.glob(config.pretrained_weights + f"*_{fold}.pt")[
+                0
+            ]
     else:
         pretrained_weights = None
 
@@ -156,14 +157,16 @@ def k_fold(config, df, df_extra=None, log_folder=None, run=None):
     if "fold" not in df.columns:
         folds = pd.read_csv(config.folds_file)
         df = df.merge(folds, how="left", on=["participant_id", "sequence_id"])
-        
+
     # Train oof for confidence
-#     oof = np.load("../logs/2023-04-11/27/pred_oof_train.npy")
-    oof = np.stack([np.load("../logs/2023-04-09/2/pred_oof.npy") for _ in range(config.k)], 0)  # LEAKY ?
-    oof_ = [oof[:, i, j] for i, j in enumerate(df['target'].values)]
+    #     oof = np.load("../logs/2023-04-11/27/pred_oof_train.npy")
+    oof = np.stack(
+        [np.load("../logs/2023-04-09/2/pred_oof.npy") for _ in range(config.k)], 0
+    )  # LEAKY ?
+    oof_ = [oof[:, i, j] for i, j in enumerate(df["target"].values)]
     oof_ = np.stack(oof_).T
     for i in range(len(oof_)):
-        df[f'pred_{i}'] = oof_[i]
+        df[f"pred_{i}"] = oof_[i]
 
     pred_oof = np.zeros((len(df), config.num_classes))
     for fold in range(config.k):
@@ -181,20 +184,20 @@ def k_fold(config, df, df_extra=None, log_folder=None, run=None):
 
             df_train = df.iloc[train_idx].copy().reset_index(drop=True)
             df_val = df.iloc[val_idx].copy().reset_index(drop=True)
-            
+
             if df_extra is not None:
                 df_train = pd.concat([df_train, df_extra], ignore_index=True)
-            
-#             df_train = df_train[
-#                 df_train[f'pred_{fold}'] > np.percentile(df_train[f'pred_{fold}'], 10)
-#             ].reset_index(drop=True)
 
-#             df_train = df_train[df_train['participant_id'] != 29302]
-#             two_hands = np.concatenate([
-#                 np.load('../output/two_hands_others.npy'),
-#                 np.load('../output/two_hands_29302.npy')
-#             ])
-#             df_train = df_train[~df_train['sequence_id'].isin(two_hands)].reset_index(drop=True)
+            # df_train = df_train[
+            #     df_train[f'pred_{fold}'] > np.percentile(df_train[f'pred_{fold}'], 10)
+            # ].reset_index(drop=True)
+
+            # df_train = df_train[df_train['participant_id'] != 29302]
+            # two_hands = np.concatenate([
+            #     np.load('../output/two_hands_others.npy'),
+            #     np.load('../output/two_hands_29302.npy')
+            # ])
+            # df_train = df_train[~df_train['sequence_id'].isin(two_hands)].reset_index(drop=True)
 
             pred_val = train(
                 config, df_train, df_val, fold, log_folder=log_folder, run=run

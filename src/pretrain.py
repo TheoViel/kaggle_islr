@@ -1,5 +1,6 @@
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 import time
 import torch
@@ -68,6 +69,7 @@ class Config:
     """
     Parameters used for training
     """
+
     # General
     seed = 42
     verbose = 1
@@ -89,8 +91,8 @@ class Config:
 
     # Model
     name = "mlp_bert_3"
-#     name = "cnn_bert"
-#     name = "bi_bert"
+    #     name = "cnn_bert"
+    #     name = "bi_bert"
     pretrained_weights = None
     syncbn = False
     num_classes = 2000
@@ -108,7 +110,7 @@ class Config:
         "name": "ce",  # ce
         "smoothing": 0.3,
         "activation": "softmax",
-        "aux_loss_weight": 0.,
+        "aux_loss_weight": 0.0,
         "activation_aux": "softmax",
     }
 
@@ -123,7 +125,7 @@ class Config:
         "lr": 2e-4,
         "warmup_prop": 0.1,
         "betas": (0.9, 0.999),
-        "max_grad_norm": 10.,
+        "max_grad_norm": 10.0,
     }
 
     epochs = 120
@@ -157,12 +159,10 @@ if __name__ == "__main__":
 
     log_folder = None
     if config.local_rank == 0:
-        log_folder = prepare_log_folder(LOG_PATH  + "pretrain/")
+        log_folder = prepare_log_folder(LOG_PATH + "pretrain/")
 
     if args.model:
         config.name = args.model
-        if config.pretrained_weights is not None:
-            config.pretrained_weights = PRETRAINED_WEIGHTS.get(args.model, None)
 
     if args.epochs:
         config.epochs = args.epochs
@@ -174,7 +174,6 @@ if __name__ == "__main__":
         config.data_config["batch_size"] = args.batch_size
         config.data_config["val_bs"] = args.batch_size
 
-    
     run = None
     if config.local_rank == 0:
         create_logger(directory=log_folder, name="logs.txt")
@@ -192,14 +191,23 @@ if __name__ == "__main__":
 
     from training.main import train
 
-#     df = df.head(10000).reset_index(drop=True)
-    df = pd.read_csv(DATA_PATH + 'df_wsasl.csv').sample(
-        frac=1, random_state=config.seed
-    ).reset_index(drop=True)
+    #     df = df.head(10000).reset_index(drop=True)
+    df = (
+        pd.read_csv(DATA_PATH + "df_wsasl.csv")
+        .sample(frac=1, random_state=config.seed)
+        .reset_index(drop=True)
+    )
 
-    df['processed_path'] = DATA_PATH + config.processed_folder + df['processed_path']
+    df["processed_path"] = DATA_PATH + config.processed_folder + df["processed_path"]
 
-    train(config, df.head(len(df) - 1000), df.tail(1000), 0, log_folder=log_folder, run=run)
+    train(
+        config,
+        df.head(len(df) - 1000),
+        df.tail(1000),
+        0,
+        log_folder=log_folder,
+        run=run,
+    )
 
     if config.local_rank == 0:
         print("\nDone !")

@@ -27,7 +27,7 @@ from transformers.models.deberta_v2.modeling_deberta_v2 import (
     XSoftmax,
     DropoutContext,
     StableDropout,
-    ConvLayer
+    ConvLayer,
 )
 
 
@@ -198,15 +198,31 @@ class DebertaV2Encoder(nn.Module):
             ConvLayer(config) if getattr(config, "conv_kernel_size", 0) > 0 else None
         )
         self.gradient_checkpointing = False
-        
+
         self.num_attention_heads = config.num_attention_heads
         self.position_buckets = config.position_buckets
-        self.ids = torch.zeros((config.max_len + 1, config.num_attention_heads, config.max_len, config.max_len), dtype=torch.int)
-        self.ids_t = torch.zeros((config.max_len + 1, config.num_attention_heads, config.max_len, config.max_len), dtype=torch.int)
+        self.ids = torch.zeros(
+            (
+                config.max_len + 1,
+                config.num_attention_heads,
+                config.max_len,
+                config.max_len,
+            ),
+            dtype=torch.int,
+        )
+        self.ids_t = torch.zeros(
+            (
+                config.max_len + 1,
+                config.num_attention_heads,
+                config.max_len,
+                config.max_len,
+            ),
+            dtype=torch.int,
+        )
         for k in range(config.max_len + 1):
             self.ids[k, :, :k, :k] = self.compute_ids(transpose=False, max_len=k)
             self.ids_t[k, :, :k, :k] = self.compute_ids(transpose=True, max_len=k)
-            
+
     def compute_ids(self, transpose=True, max_len=50):
         if transpose:
             ids = (
@@ -232,7 +248,7 @@ class DebertaV2Encoder(nn.Module):
         ).view(-1, 1, 1)
 
         return ids
-    
+
     def get_rel_embedding(self):
         rel_embeddings = self.rel_embeddings.weight if self.relative_attention else None
         if rel_embeddings is not None and ("layer_norm" in self.norm_rel_ebd):
@@ -331,6 +347,7 @@ class DisentangledSelfAttention(nn.Module):
             A model config class instance with the configuration to build a new model. The schema is similar to
             *BertConfig*, for more details, please refer [`DebertaV2Config`]
     """
+
     def __init__(self, config):
         super().__init__()
         if config.hidden_size % config.num_attention_heads != 0:
@@ -393,7 +410,7 @@ class DisentangledSelfAttention(nn.Module):
         relative_pos=None,
         rel_embeddings=None,
         ids=None,
-        ids_t=None
+        ids_t=None,
     ):
         """
         Call the module
@@ -437,9 +454,7 @@ class DisentangledSelfAttention(nn.Module):
             scale_factor += 1
 
         scale = torch.sqrt(self.scale_mult * scale_factor)
-        attention_scores = (
-            torch.bmm(query_layer, key_layer.transpose(-1, -2)) / scale
-        )
+        attention_scores = torch.bmm(query_layer, key_layer.transpose(-1, -2)) / scale
 
         if self.relative_attention:
             rel_embeddings = self.pos_dropout(rel_embeddings)
@@ -450,7 +465,7 @@ class DisentangledSelfAttention(nn.Module):
                 rel_embeddings,
                 scale_factor,
                 ids=ids,
-                ids_t=ids_t
+                ids_t=ids_t,
             )
 
         if rel_att is not None:
@@ -464,7 +479,9 @@ class DisentangledSelfAttention(nn.Module):
         )
 
         # bsz x height x length x dimension
-        attention_probs = XSoftmax.apply(attention_scores, attention_mask, -1)  # CAN BE OPTIMISED ?
+        attention_probs = XSoftmax.apply(
+            attention_scores, attention_mask, -1
+        )  # CAN BE OPTIMISED ?
         attention_probs = self.dropout(attention_probs)  # CAN BE REMOVED ?
         context_layer = torch.bmm(
             attention_probs.view(
@@ -491,13 +508,20 @@ class DisentangledSelfAttention(nn.Module):
 
     def my_gather(self, att, ids):
         bs, sz, n_fts = att.size()
-        ids_ = ids[att.size(1), :, :att.size(1), :att.size(1)].contiguous().view(-1)
+        ids_ = ids[att.size(1), :, : att.size(1), : att.size(1)].contiguous().view(-1)
         att = att.view(-1)
         y = att[ids_].view(bs, sz, sz)
         return y
 
     def efficient_disentangled_attention_bias(
-        self, query_layer, key_layer, relative_pos, rel_embeddings, scale_factor, ids=None, ids_t=None
+        self,
+        query_layer,
+        key_layer,
+        relative_pos,
+        rel_embeddings,
+        scale_factor,
+        ids=None,
+        ids_t=None,
     ):
         att_span = self.pos_ebd_size
         rel_embeddings = rel_embeddings[0 : att_span * 2, :].unsqueeze(0)
@@ -525,7 +549,7 @@ class DisentangledSelfAttention(nn.Module):
             c2p_att = torch.bmm(query_layer, pos_key_layer.transpose(-1, -2))
             c2p_att = self.my_gather(c2p_att, ids)
             score += c2p_att / scale
-        
+
         if "p2c" in self.pos_att_type:  # position->content
             scale = torch.sqrt(self.scale_mult * scale_factor)
             p2c_att = torch.bmm(key_layer, pos_query_layer.transpose(-1, -2))

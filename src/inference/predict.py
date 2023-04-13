@@ -30,10 +30,7 @@ def predict(model, dataset, loss_config, batch_size=64, device="cuda", use_fp16=
     preds_aux = []
 
     loader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=NUM_WORKERS
+        dataset, batch_size=batch_size, shuffle=False, num_workers=NUM_WORKERS
     )
 
     with torch.no_grad():

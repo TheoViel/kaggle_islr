@@ -1,4 +1,3 @@
-import os
 import json
 import glob
 import torch
@@ -20,12 +19,12 @@ def uniform_soup(model, weights, device="cpu", by_name=False):
     model = model.to(device)
     model_dict = model.state_dict()
 
-    soups = {key:[] for key in model_dict}
-    
+    soups = {key: [] for key in model_dict}
+
     for i, model_path in enumerate(weights):
         weight = torch.load(model_path, map_location=device)
         weight_dict = weight.state_dict() if hasattr(weight, "state_dict") else weight
-        
+
         if by_name:
             weight_dict = {k: v for k, v in weight_dict.items() if k in model_dict}
 
@@ -34,8 +33,9 @@ def uniform_soup(model, weights, device="cpu", by_name=False):
 
     if 0 < len(soups):
         soups = {
-            k: (torch.sum(torch.stack(v), axis = 0) / len(v)).type(v[0].dtype)
-            for k, v in soups.items() if len(v) != 0
+            k: (torch.sum(torch.stack(v), axis=0) / len(v)).type(v[0].dtype)
+            for k, v in soups.items()
+            if len(v) != 0
         }
         model_dict.update(soups)
         model.load_state_dict(model_dict)
@@ -44,13 +44,7 @@ def uniform_soup(model, weights, device="cpu", by_name=False):
 
 
 def kfold_inference_val(
-    df,
-    exp_folder,
-    debug=False,
-    save=True,
-    use_tta=False,
-    use_fp16=False,
-    train=False
+    df, exp_folder, debug=False, save=True, use_tta=False, use_fp16=False, train=False
 ):
     """
     Main inference function for validation data.
@@ -94,10 +88,13 @@ def kfold_inference_val(
     pred_oof = np.zeros((config.k, len(df), config.num_classes))
     for fold in config.selected_folds:
         print(f"\n- Fold {fold + 1}")
-        
+
         if config.model_soup:
             weights = [f for f in sorted(glob.glob(exp_folder + f"*_{fold}_*.pt"))][-1:]
-#             weights += [f for f in sorted(glob.glob("../logs/2023-03-30/3/" + f"*_{fold}.pt")) if "fullfit" not in f]
+            # weights += [
+            #     f for f in sorted(glob.glob("../logs/2023-03-30/3/" + f"*_{fold}.pt"))
+            #     if "fullfit" not in f
+            # ]
             print("Soup :", weights)
             model = uniform_soup(model, weights)
             model = model.cuda().eval()
@@ -137,10 +134,10 @@ def kfold_inference_val(
 
         if save:
             np.save(exp_folder + f"pred_val_inf_{fold}.npy", pred_val)
-            
+
         pred_oof[fold, val_idx] = pred_val
 
-#         break
+    #         break
 
     if not train:
         pred_oof = pred_oof.sum(0)

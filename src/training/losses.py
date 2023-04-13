@@ -4,6 +4,33 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+class ConsistencyLoss(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.consistency_weight = config["consistency_weight"]
+        self.rampup_length = config["rampup_length"]  # rampup steps
+
+    def sigmoid_rampup(self, current):
+        if self.rampup_length == 0:
+            return 1.0
+        current = np.clip(current, 0.0, self.rampup_length)
+        phase = 1.0 - current / self.rampup_length
+        return float(np.exp(-5.0 * phase * phase))
+
+    def get_consistency_weight(self, epoch):
+        return self.consistency_weight * self.sigmoid_rampup(epoch)
+
+    def forward(self, student_pred, teacher_pred, step):
+        student_pred = student_pred.softmax(-1)
+        teacher_pred = teacher_pred.softmax(-1).detach().data
+
+        loss = ((student_pred - teacher_pred) ** 2).sum(-1)
+
+        w = self.get_consistency_weight(step)
+
+        return w * loss.mean()
+
+
 class SmoothCrossEntropyLoss(nn.Module):
     """
     Cross-entropy loss with label smoothing.

@@ -1,3 +1,4 @@
+import copy
 import torch
 import numpy as np
 from tqdm import tqdm
@@ -214,29 +215,27 @@ class SignDataset(Dataset):
 
         data["target"] = torch.tensor([self.targets[idx]], dtype=torch.float)
 
-        #         data = normalize_face(data)
+        data_mt = copy.deepcopy(data)
 
         if self.train:
             if self.aug_strength >= 3:
                 data = self.mix_face(data, idx, p=0.25)
                 data = add_missing_hand(data, p=0.25)
+                data_mt = self.mix_face(data_mt, idx, p=0.25)
+                data_mt = add_missing_hand(data_mt, p=0.25)
 
             data = augment(data, aug_strength=self.aug_strength)
-
-        #         data = add_missing_hand(data)
-        #         data = normalize(data)
+            data_mt = augment(data_mt, aug_strength=self.aug_strength)
 
         data["mask"] = torch.ones(data["x"].size())
-        #         data["length"] = length
-
-        #         data = interpolate(data, p=1)
-        #         if not is_left(data):
-        #         data = flip(data, p=1)
+        data_mt["mask"] = torch.ones(data_mt["x"].size())
 
         if self.max_len is not None:
             if self.resize_mode == "pad":
                 data = crop_or_pad(data, max_len=self.max_len)
+                data_mt = crop_or_pad(data_mt, max_len=self.max_len)
             else:
                 data = resize(data, size=self.max_len)
+                data_mt = resize(data_mt, size=self.max_len)
 
-        return data
+        return data, data_mt

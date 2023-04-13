@@ -6,7 +6,7 @@ import torch
 from transformers import get_linear_schedule_with_warmup
 
 from data.loader import define_loaders
-from training.losses import SignLoss
+from training.losses import SignLoss, ConsistencyLoss
 from training.optim import define_optimizer
 
 from utils.metrics import accuracy
@@ -27,6 +27,13 @@ def trim_tensors(data, min_len=10):
     max_len = (data["type"][:, :, 0] != 0).sum(1).max()
     max_len = max(max_len, min_len)
     return {k: data[k][:, :max_len].contiguous() for k in data.keys()}
+
+
+def update_teacher_params(student, teacher, alpha, global_step):
+    # Use the true average until the exponential average is more correct
+    alpha = min(1 - 1 / (global_step + 1), alpha)
+    for ema_param, param in zip(teacher.parameters(), student.parameters()):
+        ema_param.data.mul_(alpha).add_(1 - alpha, param.data)
 
 
 def evaluate(
@@ -62,7 +69,7 @@ def evaluate(
     preds, preds_aux = [], []
 
     with torch.no_grad():
-        for data in val_loader:
+        for data, _ in val_loader:
             for k in data.keys():
                 data[k] = data[k].cuda()
             #             data = trim_tensors(data)
@@ -103,6 +110,7 @@ def evaluate(
 
 def fit(
     model,
+    model_teacher,
     train_dataset,
     val_dataset,
     data_config,
@@ -150,8 +158,6 @@ def fit(
         betas=optimizer_config["betas"],
     )
 
-    loss_fct = SignLoss(loss_config)
-
     train_loader, val_loader = define_loaders(
         train_dataset,
         val_dataset,
@@ -169,6 +175,14 @@ def fit(
     scheduler = get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps, num_training_steps
     )
+
+    mt_config = {
+        "ema_decay": 0.995,
+        "consistency_weight": 1,
+        "rampup_length": int(num_training_steps * 0.25),
+    }
+    loss_fct = SignLoss(loss_config)
+    consistency_loss = ConsistencyLoss(mt_config)
 
     step = 1
     acc = 0
@@ -199,17 +213,16 @@ def fit(
             except AttributeError:
                 train_loader.batch_sampler.sampler.set_epoch(epoch)
 
-        for data in train_loader:
+        for data, data_teacher in train_loader:
             for k in data.keys():
                 data[k] = data[k].cuda()
-            #             data = trim_tensors(data)
 
             with torch.cuda.amp.autocast(enabled=use_fp16):
                 y_pred, y_pred_aux = model(data)
-                loss = loss_fct(y_pred, y_pred_aux, data["target"], 0)
+                y_pred_teacher, y_pred_aux_teacher = model_teacher(data_teacher)
 
-            #             if not (step % 10):
-            #                 print(step, loss.item(), y_pred.mean().item())
+                loss = loss_fct(y_pred, y_pred_aux, data["target"], 0)
+                loss += consistency_loss(y_pred, y_pred_teacher, step)
 
             scaler.scale(loss).backward()
             avg_losses.append(loss.detach())
@@ -224,6 +237,8 @@ def fit(
             scaler.step(optimizer)
             scale = scaler.get_scale()
             scaler.update()
+
+            update_teacher_params(model, model_teacher, mt_config["ema_decay"], step)
 
             model.zero_grad(set_to_none=True)
 
@@ -279,6 +294,7 @@ def fit(
                 start_time = time.time()
                 avg_losses = []
                 model.train()
+                model_teacher.train()
 
         if (log_folder is not None) and (local_rank == 0) and model_soup:
             name = model.module.name if distributed else model.name

@@ -57,19 +57,6 @@ def define_model(
             drop_rate=drop_rate,
             max_len=max_len,
         )
-    elif name == "mlp_bert_skip":
-        model = SignMLPBertSkip(
-            embed_dim=embed_dim,
-            dense_dim=dense_dim,
-            transfo_dim=transfo_dim,
-            transfo_heads=transfo_heads,
-            transfo_layers=transfo_layers,
-            num_classes=num_classes,
-            num_classes_aux=num_classes_aux,
-            n_landmarks=n_landmarks,
-            drop_rate=drop_rate,
-            max_len=max_len,
-        )
     elif name == "mlp_cnn":
         model = SignMLPCNN(
             embed_dim=embed_dim,
@@ -361,7 +348,7 @@ class SignMLPBert3(nn.Module):
         if transfo_layers == 3:  # 512, 768, 1024 / 768
             delta = 256
             transfo_dim = 512
-        else:  # 768, 768 
+        else:  # 768, 768
             delta = 0
 
         self.landmark_mlp = nn.Sequential(
@@ -395,7 +382,7 @@ class SignMLPBert3(nn.Module):
         if transfo_layers >= 2:
             config.hidden_size += delta
             config.intermediate_size += delta
-            
+
             if transfo_layers >= 3 and transfo_dim_ == 1024:
                 config.output_size += delta
 
@@ -416,10 +403,18 @@ class SignMLPBert3(nn.Module):
             self.frame_transformer_3 = DebertaV2Encoder(config)
             self.frame_transformer_3.layer[0].output = DebertaV2Output(config)
 
+        self.frame_transformer_4 = None
+        if transfo_layers >= 4:
+            config.hidden_size += delta
+            config.intermediate_size += delta
+#             config.attention_probs_dropout_prob *= 2
+#             config.hidden_dropout_prob *= 2
+            self.frame_transformer_4 = DebertaV2Encoder(config)
+            self.frame_transformer_4.layer[0].output = DebertaV2Output(config)
+
         self.logits = nn.Linear(config.output_size, num_classes)
         if num_classes_aux:
             self.logits_aux = nn.Linear(transfo_dim, num_classes_aux)
-            
 
     def forward(self, x, return_fts=False):
         """
@@ -445,11 +440,15 @@ class SignMLPBert3(nn.Module):
 #             compute_hand_features(x_pos, x["type"])
 #         ], -1)
 #         dists_fts = self.dists_mlp(dists.view(bs * n_frames, -1))
-        
+
         if self.use_cnn:
-            x_pos = x_pos.transpose(1, 2).transpose(2, 3).contiguous().view(bs * n_landmarks, -1, n_frames)
+            x_pos = x_pos.transpose(1, 2).transpose(2, 3).contiguous().view(
+                bs * n_landmarks, -1, n_frames
+            )
             x_pos = self.pos_cnn(x_pos)
-            x_pos = x_pos.view(bs, n_landmarks, -1, n_frames).transpose(2, 3).transpose(1, 2).contiguous()
+            x_pos = x_pos.view(
+                bs, n_landmarks, -1, n_frames
+            ).transpose(2, 3).transpose(1, 2).contiguous()
             x_pos = torch.cat([torch.stack([x["x"], x["y"], x["z"]], -1), x_pos], -1)
         else:
             x_pos = add_shift(x_pos)
@@ -457,7 +456,7 @@ class SignMLPBert3(nn.Module):
         x_pos = self.pos_dense(x_pos)
 
         fts = self.dense(torch.cat([x_type, x_landmark, x_pos], -1))
-        
+
 #         fts = fts[:, :self.max_len - 5].contiguous()
 #         n_frames = self.max_len - 5
 
@@ -498,6 +497,8 @@ class SignMLPBert3(nn.Module):
             fts = self.frame_transformer_2(fts, mask).last_hidden_state
         if self.frame_transformer_3 is not None:
             fts = self.frame_transformer_3(fts, mask).last_hidden_state
+        if self.frame_transformer_4 is not None:
+            fts = self.frame_transformer_4(fts, mask).last_hidden_state
 
         mask = mask.unsqueeze(-1)
         fts = fts * mask

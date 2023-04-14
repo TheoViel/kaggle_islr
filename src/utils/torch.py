@@ -98,7 +98,7 @@ def load_model_weights(model, filename, verbose=1, cp_folder="", strict=True):
     return model
 
 
-def count_parameters(model, all=False):
+def count_parameters(model, all_=False):
     """
     Count the parameters of a model.
 
@@ -110,7 +110,7 @@ def count_parameters(model, all=False):
         int: Number of parameters.
     """
 
-    if all:
+    if all_:
         return sum(p.numel() for p in model.parameters())
     else:
         return sum(p.numel() for p in model.parameters() if p.requires_grad)

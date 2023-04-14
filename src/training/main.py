@@ -92,10 +92,30 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
         num_classes_aux=config.num_classes_aux,
         n_landmarks=config.n_landmarks,
         max_len=config.max_len,
-        verbose=(config.local_rank == 0),
+        verbose=0,
     ).cuda()
-    for param in model_teacher.parameters():
-        param.detach_()
+
+    model_distilled = None
+    if config.mt_config['distill']:
+        distill_transfo_dim = config.transfo_dim - 256  # 512
+        distill_dense_dim = config.dense_dim # * 2
+        distill_transfo_layers = config.transfo_layers - 1
+
+        model_distilled = define_model(
+            config.name,
+            pretrained_weights=pretrained_weights,
+            embed_dim=config.embed_dim,
+            transfo_dim=distill_transfo_dim,
+            dense_dim=distill_dense_dim,
+            transfo_heads=config.transfo_heads,
+            transfo_layers=distill_transfo_layers,
+            drop_rate=config.drop_rate,
+            num_classes=config.num_classes,
+            num_classes_aux=config.num_classes_aux,
+            n_landmarks=config.n_landmarks,
+            max_len=config.max_len,
+            verbose=0,
+        ).cuda()
 
     if config.distributed:
         if config.syncbn:
@@ -107,27 +127,37 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
             find_unused_parameters=False,
             broadcast_buffers=config.syncbn,
         )
-
-    try:
-        model = torch.compile(model, mode="reduce-overhead")
-        if config.local_rank == 0:
-            print("Using torch 2.0 acceleration !\n")
-    except Exception:
-        pass
+        if model_distilled is not None:
+            model_distilled = DistributedDataParallel(
+                model_distilled,
+                device_ids=[config.local_rank],
+                find_unused_parameters=False,
+                broadcast_buffers=config.syncbn,
+            )
 
     model.zero_grad(set_to_none=True)
     model.train()
 
-    n_parameters = count_parameters(model)
+    if model_distilled is not None:
+        model_distilled.zero_grad(set_to_none=True)
+        model_distilled.train()
 
+    for param in model_teacher.parameters():
+        param.detach_()
+
+    n_parameters = count_parameters(model)
     if config.local_rank == 0:
         print(f"    -> {len(train_dataset)} training images")
         print(f"    -> {len(val_dataset)} validation images")
-        print(f"    -> {n_parameters} trainable parameters\n")
+        print(f"    -> {n_parameters} trainable parameters")
+        if model_distilled is not None:
+            dist_parameters = count_parameters(model_distilled)
+            print(f"    -> {dist_parameters} distilled parameters\n")
 
     pred_val = fit(
         model,
         model_teacher,
+        model_distilled,
         train_dataset,
         val_dataset,
         config.data_config,

@@ -115,7 +115,7 @@ class Config:
     # k-fold
     k = 4
     folds_file = f"../input/folds_{k}.csv"
-    selected_folds = [0, 1, 2, 3]
+    selected_folds = [0]  # , 1, 2, 3]
 
     # Model
     name = "mlp_bert_3"  # mlp_bert_skip
@@ -124,7 +124,7 @@ class Config:
     num_classes = 250
     num_classes_aux = 0
 
-    transfo_layers = 3
+    transfo_layers = 3  # 4
     embed_dim = 16
     dense_dim = 192
     transfo_dim = 768  # 1024
@@ -154,15 +154,10 @@ class Config:
         "betas": (0.9, 0.999),
         "max_grad_norm": 10.0,
         "weight_decay": 0.4,
-#         # AWP
-#         "use_awp": True,
-#         "awp_start_step": 1,
-#         "awp_lr": 1e-3,
-#         "awp_eps": 1e-3,
-#         "awp_period": 1,
     }
 
     mt_config = {
+        "distill": True,
         "ema_decay": 0.97,  # 0.99
         "consistency_weight": 5,
         "rampup_prop": 0.25,
@@ -213,7 +208,7 @@ if __name__ == "__main__":
 
     if args.lr:
         config.optimizer_config["lr"] = args.lr
-        
+
     if args.mt_ema_decay:
         config.mt_config["ema_decay"] = args.mt_ema_decay
 
@@ -260,7 +255,7 @@ if __name__ == "__main__":
     if config.use_extra_data:
         df_extra = prepare_wsasl(DATA_PATH, config.processed_folder[:-1] + "_wlasl/")
 
-    #     df = df.head(10000).reset_index(drop=True)
+#     df = df.head(50000).reset_index(drop=True)
 
     k_fold(Config, df, df_extra=df_extra, log_folder=log_folder, run=run)
 

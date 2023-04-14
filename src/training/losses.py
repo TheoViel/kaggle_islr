@@ -24,8 +24,8 @@ class ConsistencyLoss(nn.Module):
     def forward(
         self, student_pred, teacher_pred, step=1, student_pred_aux=None, teacher_pred_aux=None
     ):
-        w = self.get_consistency_weight(step)
-        
+        w = self.get_consistency_weight(step) 
+
         student_pred = student_pred.softmax(-1)
         teacher_pred = teacher_pred.softmax(-1).detach().data
         loss = ((student_pred - teacher_pred) ** 2).sum(-1).mean()

@@ -79,6 +79,24 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
         verbose=(config.local_rank == 0),
     ).cuda()
 
+    model_teacher = define_model(
+        config.name,
+        pretrained_weights=pretrained_weights,
+        embed_dim=config.embed_dim,
+        transfo_dim=config.transfo_dim,
+        dense_dim=config.dense_dim,
+        transfo_heads=config.transfo_heads,
+        transfo_layers=config.transfo_layers,
+        drop_rate=config.drop_rate,
+        num_classes=config.num_classes,
+        num_classes_aux=config.num_classes_aux,
+        n_landmarks=config.n_landmarks,
+        max_len=config.max_len,
+        verbose=(config.local_rank == 0),
+    ).cuda()
+    for param in model_teacher.parameters():
+        param.detach_()
+
     if config.distributed:
         if config.syncbn:
             model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
@@ -109,11 +127,13 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
 
     pred_val = fit(
         model,
+        model_teacher,
         train_dataset,
         val_dataset,
         config.data_config,
         config.loss_config,
         config.optimizer_config,
+        config.mt_config,
         epochs=config.epochs,
         verbose_eval=config.verbose_eval,
         model_soup=config.model_soup,

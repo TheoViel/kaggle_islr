@@ -85,6 +85,12 @@ def parse_args():
         default=0,
         help="Batch size",
     )
+    parser.add_argument(
+        "--mt-ema-decay",
+        type=float,
+        default=0,
+        help="Mean teacher EMA decay",
+    )
     return parser.parse_args()
 
 
@@ -92,7 +98,6 @@ class Config:
     """
     Parameters used for training
     """
-
     # General
     seed = 42
     verbose = 1
@@ -110,7 +115,7 @@ class Config:
     # k-fold
     k = 4
     folds_file = f"../input/folds_{k}.csv"
-    selected_folds = [0]  # , 1, 2, 3]
+    selected_folds = [0, 1, 2, 3]
 
     # Model
     #     name = "gcn"
@@ -150,6 +155,12 @@ class Config:
         "warmup_prop": 0.1,
         "betas": (0.9, 0.999),
         "max_grad_norm": 10.0,
+    }
+
+    mt_config = {
+        "ema_decay": 0.98,  # 0.99
+        "consistency_weight": 3,
+        "rampup_prop": 0.25,
     }
 
     epochs = 100
@@ -196,6 +207,9 @@ if __name__ == "__main__":
 
     if args.lr:
         config.optimizer_config["lr"] = args.lr
+        
+    if args.mt_ema_decay:
+        config.mt_config["ema_decay"] = args.mt_ema_decay
 
     if args.batch_size:
         config.data_config["batch_size"] = args.batch_size

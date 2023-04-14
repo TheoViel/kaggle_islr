@@ -3,16 +3,14 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 
 cd src
 
-torchrun --nproc_per_node=8 main.py
+torchrun --nproc_per_node=8 main.py --mt-ema-decay 0.97
 
-# --lr 2e-4 --epochs 120
+echo
 
-# echo
+torchrun --nproc_per_node=8 main.py --mt-ema-decay 0.96
 
-# torchrun --nproc_per_node=8 main.py --lr 3e-4 --epochs 50
+echo
 
-# echo
+torchrun --nproc_per_node=8 main.py --mt-ema-decay 0.95
 
-# torchrun --nproc_per_node=8 main.py --lr 2e-4 --epochs 100
-
-# echo
+echo

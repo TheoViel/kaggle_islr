@@ -24,7 +24,6 @@
 # import torch_performance_linter
 
 import os
-
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 import time
@@ -86,6 +85,12 @@ def parse_args():
         default=0,
         help="Batch size",
     )
+    parser.add_argument(
+        "--mt-ema-decay",
+        type=float,
+        default=0,
+        help="Mean teacher EMA decay",
+    )
     return parser.parse_args()
 
 
@@ -93,7 +98,6 @@ class Config:
     """
     Parameters used for training
     """
-
     # General
     seed = 42
     verbose = 1
@@ -125,7 +129,7 @@ class Config:
     transfo_layers = 3
     embed_dim = 16
     dense_dim = 256
-    transfo_dim = 768  # 288
+    transfo_dim = 1024  # 288
     transfo_heads = 16
     drop_rate = 0.05
 
@@ -147,13 +151,19 @@ class Config:
 
     optimizer_config = {
         "name": "AdamW",
-        "lr": 3e-4,
+        "lr": 4e-4,
         "warmup_prop": 0.1,
         "betas": (0.9, 0.999),
         "max_grad_norm": 10.0,
     }
 
-    epochs = 100
+    mt_config = {
+        "ema_decay": 0.98,  # 0.99
+        "consistency_weight": 3,
+        "rampup_prop": 0.25,
+    }
+
+    epochs = 80
 
     use_fp16 = True
     model_soup = False
@@ -191,14 +201,15 @@ if __name__ == "__main__":
 
     if args.model:
         config.name = args.model
-        if config.pretrained_weights is not None:
-            config.pretrained_weights = PRETRAINED_WEIGHTS.get(args.model, None)
 
     if args.epochs:
         config.epochs = args.epochs
 
     if args.lr:
         config.optimizer_config["lr"] = args.lr
+        
+    if args.mt_ema_decay:
+        config.mt_config["ema_decay"] = args.mt_ema_decay
 
     if args.batch_size:
         config.data_config["batch_size"] = args.batch_size

@@ -85,6 +85,12 @@ def parse_args():
         default=0,
         help="Batch size",
     )
+    parser.add_argument(
+        "--mt-ema-decay",
+        type=float,
+        default=0,
+        help="Mean teacher EMA decay",
+    )
     return parser.parse_args()
 
 
@@ -92,7 +98,6 @@ class Config:
     """
     Parameters used for training
     """
-
     # General
     seed = 42
     verbose = 1
@@ -202,6 +207,9 @@ if __name__ == "__main__":
 
     if args.lr:
         config.optimizer_config["lr"] = args.lr
+        
+    if args.mt_ema_decay:
+        config.mt_config["ema_decay"] = args.mt_ema_decay
 
     if args.batch_size:
         config.data_config["batch_size"] = args.batch_size

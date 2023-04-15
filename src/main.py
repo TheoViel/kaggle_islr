@@ -126,10 +126,10 @@ class Config:
     num_classes = 250
     num_classes_aux = 0
 
-    transfo_layers = 3
+    transfo_layers = 2
     embed_dim = 16
-    dense_dim = 256
-    transfo_dim = 1024  # 288
+    dense_dim = 512
+    transfo_dim = 768  # 1024
     transfo_heads = 16
     drop_rate = 0.05
 
@@ -158,7 +158,7 @@ class Config:
     }
 
     mt_config = {
-        "ema_decay": 0.98,  # 0.99
+        "ema_decay": 0.97,  # 0.99
         "consistency_weight": 3,
         "rampup_prop": 0.25,
     }

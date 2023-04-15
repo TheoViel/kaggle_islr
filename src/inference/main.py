@@ -44,11 +44,10 @@ def uniform_soup(model, weights, device="cpu", by_name=False):
 
 
 def kfold_inference_val(
-    df, exp_folder, debug=False, save=True, use_tta=False, use_fp16=False, train=False, use_mt=False
+    df, exp_folder, debug=False, save=True, use_tta=False, use_fp16=False, train=False, use_mt=False, distilled=False
 ):
     """
     Main inference function for validation data.
-
     Args:
         df (pd DataFrame): Dataframe.
         exp_folder (str): Experiment folder.
@@ -57,7 +56,6 @@ def kfold_inference_val(
         use_tta (bool, optional): Whether to use TTA. Defaults to False.
         use_fp16 (bool, optional): Whether to use fp16. Defaults to False.
         extract_fts (bool, optional): Whether to extract features. Defaults to False.
-
     Returns:
         np array [n x n_classes]: Predictions.
         np array [n x n_classes_aux]: Aux predictions.
@@ -72,7 +70,7 @@ def kfold_inference_val(
     model = define_model(
         config.name,
         embed_dim=config.embed_dim,
-        transfo_dim=config.transfo_dim,
+        transfo_dim=config.transfo_dim if not distilled else config.transfo_dim - 256,
         dense_dim=config.dense_dim,
         transfo_heads=config.transfo_heads,
         transfo_layers=config.transfo_layers,
@@ -101,6 +99,8 @@ def kfold_inference_val(
         else:
             if use_mt:
                 weights = exp_folder + f"{config.name}_teacher_{fold}.pt"
+            elif distilled:
+                weights = exp_folder + f"{config.name}_distilled_{fold}.pt"
             else:
                 weights = exp_folder + f"{config.name}_{fold}.pt"
             model = load_model_weights(model, weights, verbose=1)
@@ -148,6 +148,11 @@ def kfold_inference_val(
     acc = accuracy(df["target"].values, pred_oof)
     print(f"\n\n -> CV Accuracy : {acc:.4f}")
     if save:
-        np.save(exp_folder + "pred_oof_inf.npy", pred_oof)
-
+        if distilled:
+            np.save(exp_folder + "pred_oof_dist.npy", pred_oof)
+        elif use_mt:
+            np.save(exp_folder + "pred_oof_mt.npy", pred_oof)
+        else:
+            np.save(exp_folder + "pred_oof_inf.npy", pred_oof)
+        
     return pred_oof

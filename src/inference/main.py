@@ -1,5 +1,5 @@
 import json
-import glob
+# import glob
 import torch
 import numpy as np
 import pandas as pd
@@ -39,7 +39,9 @@ def uniform_soup(model, weights, device="cpu", by_name=False, weighting="uniform
 
     if 0 < len(soups):
         soups = {
-            k: (torch.sum(torch.stack(v) * w.view([-1] + [1] * len(v[0].size())), axis=0) / w.sum()).type(v[0].dtype)
+            k: (torch.sum(
+                    torch.stack(v) * w.view([-1] + [1] * len(v[0].size())), axis=0
+            ) / w.sum()).type(v[0].dtype)
             for k, v in soups.items()
             if len(v) != 0
         }
@@ -55,7 +57,16 @@ def uniform_soup(model, weights, device="cpu", by_name=False, weighting="uniform
 
 
 def kfold_inference_val(
-    df, exp_folder, debug=False, save=True, use_tta=False, use_fp16=False, train=False, use_mt=False, distilled=False, n_soup=0
+    df,
+    exp_folder,
+    debug=False,
+    save=True,
+    use_tta=False,
+    use_fp16=False,
+    train=False,
+    use_mt=False,
+    distilled=False,
+    n_soup=0
 ):
     """
     Main inference function for validation data.
@@ -100,10 +111,16 @@ def kfold_inference_val(
 
         if config.model_soup and n_soup > 1:
             if use_mt:
-                weights = [exp_folder + f"{config.name}_teacher_{fold}_{ep}.pt" for ep in range(config.epochs - n_soup, config.epochs + 1)]
+                weights = [
+                    exp_folder + f"{config.name}_teacher_{fold}_{ep}.pt"
+                    for ep in range(config.epochs - n_soup, config.epochs + 1)
+                ]
             else:
-                weights = [exp_folder + f"{config.name}_{fold}_{ep}.pt" for ep in range(config.epochs - n_soup, config.epochs + 1)]
-            
+                weights = [
+                    exp_folder + f"{config.name}_{fold}_{ep}.pt"
+                    for ep in range(config.epochs - n_soup, config.epochs + 1)
+                ]
+
             weights = weights[-n_soup:]
             print("\nSoup :", weights)
             model = uniform_soup(model, weights)
@@ -201,5 +218,5 @@ def kfold_inference_val(
             np.save(exp_folder + "pred_oof_mt.npy", pred_oof)
         else:
             np.save(exp_folder + "pred_oof_inf.npy", pred_oof)
-        
+
     return pred_oof

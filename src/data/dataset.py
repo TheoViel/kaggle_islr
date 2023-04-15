@@ -220,6 +220,7 @@ class SignDataset(Dataset):
         data["target"] = torch.tensor([self.targets[idx]], dtype=torch.float)
 
         data_mt = copy.deepcopy(data)
+        data_dist = copy.deepcopy(data)
 
         if self.train:
             if self.aug_strength >= 3:
@@ -227,19 +228,25 @@ class SignDataset(Dataset):
                 data = add_missing_hand(data, p=0.25)
                 data_mt = self.mix_face(data_mt, idx, p=0.25)
                 data_mt = add_missing_hand(data_mt, p=0.25)
+                data_dist = self.mix_face(data_dist, idx, p=0.25)
+                data_dist = add_missing_hand(data_dist, p=0.25)
 
             data = augment(data, aug_strength=self.aug_strength)
             data_mt = augment(data_mt, aug_strength=self.aug_strength)
+            data_dist = augment(data_dist, aug_strength=self.aug_strength)
 
         data["mask"] = torch.ones(data["x"].size())
         data_mt["mask"] = torch.ones(data_mt["x"].size())
+        data_dist["mask"] = torch.ones(data_mt["x"].size())
 
         if self.max_len is not None:
             if self.resize_mode == "pad":
                 data = crop_or_pad(data, max_len=self.max_len)
                 data_mt = crop_or_pad(data_mt, max_len=self.max_len)
+                data_dist = crop_or_pad(data_dist, max_len=self.max_len)
             else:
                 data = resize(data, size=self.max_len)
                 data_mt = resize(data_mt, size=self.max_len)
+                data_dist = resize(data_dist, size=self.max_len)
 
-        return data, data_mt
+        return data, data_mt, data_dist

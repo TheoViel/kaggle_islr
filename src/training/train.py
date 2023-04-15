@@ -50,7 +50,7 @@ def evaluate(
         num_classes_aux = model.num_classes_aux
 
     with torch.no_grad():
-        for data, _ in val_loader:
+        for data, _, _ in val_loader:
             for k in data.keys():
                 data[k] = data[k].cuda()
 
@@ -217,34 +217,37 @@ def fit(
             except AttributeError:
                 train_loader.batch_sampler.sampler.set_epoch(epoch)
 
-        for data, data_teacher in train_loader:
-            data_distilled = {}
+        for data, data_teacher, data_distilled in train_loader:
             for k in data.keys():
                 data[k] = data[k].cuda()
-                data_distilled[k] = torch.clone(data[k])
+                data_distilled[k] = data_distilled[k].cuda()
                 data_teacher[k] = data_teacher[k].cuda()
 
             with torch.cuda.amp.autocast(enabled=use_fp16):
                 y_pred, y_pred_aux = model(data)
+                if model_teacher is not None:
+                    with torch.no_grad():
+                        y_pred_teacher, y_pred_aux_teacher = model_teacher(data_teacher)
 
-                with torch.no_grad():
-                    y_pred_teacher, y_pred_aux_teacher = model_teacher(data_teacher)
-
-                loss = loss_fct(y_pred, y_pred_aux, data["target"], 0)
-                loss += consistency_loss(
-                    y_pred,
-                    y_pred_teacher,
-                    step=step,
-                    student_pred_aux=y_pred_aux,
-                    teacher_pred_aux=y_pred_aux_teacher,
-                )
+                    loss = loss_fct(y_pred, y_pred_aux, data["target"], 0)
+                    loss += consistency_loss(
+                        y_pred,
+                        y_pred_teacher,
+                        step=step,
+                        student_pred_aux=y_pred_aux,
+                        teacher_pred_aux=y_pred_aux_teacher,
+                    )
 
                 if model_distilled is not None:
                     y_pred_dist, y_pred_aux_dist = model_distilled(data_distilled)
                     loss_dist = loss_fct(y_pred_dist, y_pred_aux_dist, data_distilled["target"], 0)
-                    loss_dist += consistency_loss(y_pred_dist, y_pred_teacher, step)
 
-            scaler.scale(loss).backward()
+                    if model_teacher is not None:
+                        loss_dist += consistency_loss(y_pred_dist, y_pred_teacher, step)
+                    else:
+                        loss_dist += consistency_loss(y_pred_dist, y_pred, step)
+
+            scaler.scale(loss).backward()  # retain_graph=True ?
             if model_distilled is not None:
                 scaler.scale(loss_dist).backward()
 
@@ -277,13 +280,13 @@ def fit(
             if distributed:
                 torch.cuda.synchronize()
 
-            update_teacher_params(model, model_teacher, teacher_config["ema_decay"], step)
+            if model_teacher is not None:
+                update_teacher_params(model, model_teacher, teacher_config["ema_decay"], step)
 
             if scale == scaler.get_scale():
                 scheduler.step()
                 if model_distilled is not None:
                     scheduler_distilled.step()
-
             step += 1
 
             if (step % verbose_eval) == 0 or step - 1 >= epochs * len(train_loader):
@@ -306,29 +309,30 @@ def fit(
                     local_rank=local_rank,
                 )
 
+                preds_teach, preds_dist = None, None
                 if (step - 1) >= (epochs * len(train_loader) * 0.5):
-                    preds_teach, _, _ = evaluate(
-                        model_teacher,
-                        val_loader,
-                        loss_config,
-                        loss_fct,
-                        use_fp16=use_fp16,
-                        distributed=distributed,
-                        world_size=world_size,
-                        local_rank=local_rank,
-                    )
-                    preds_dist, _, _ = evaluate(
-                        model_distilled,
-                        val_loader,
-                        loss_config,
-                        loss_fct,
-                        use_fp16=use_fp16,
-                        distributed=distributed,
-                        world_size=world_size,
-                        local_rank=local_rank,
-                    )
-                else:
-                    preds_teach, preds_dist = None, None
+                    if model_teacher is not None:
+                        preds_teach, _, _ = evaluate(
+                            model_teacher,
+                            val_loader,
+                            loss_config,
+                            loss_fct,
+                            use_fp16=use_fp16,
+                            distributed=distributed,
+                            world_size=world_size,
+                            local_rank=local_rank,
+                        )
+                    if model_distilled is not None:
+                        preds_dist, _, _ = evaluate(
+                            model_distilled,
+                            val_loader,
+                            loss_config,
+                            loss_fct,
+                            use_fp16=use_fp16,
+                            distributed=distributed,
+                            world_size=world_size,
+                            local_rank=local_rank,
+                        )
 
                 if local_rank == 0:
                     preds = preds[: len(val_dataset)]
@@ -363,7 +367,7 @@ def fit(
                     if acc_teach:
                         run[f"fold_{fold}/val/acc_teach"].log(acc_teach, step=step_)
                     if acc_dist:
-                        run[f"fold_{fold}/val/acc_teach"].log(acc_dist, step=step_)
+                        run[f"fold_{fold}/val/acc_dist"].log(acc_dist, step=step_)
 
                 start_time = time.time()
                 avg_losses = []
@@ -389,16 +393,18 @@ def fit(
                 )
 
     if (log_folder is not None) and (local_rank == 0):
-        try:
+        if model_teacher is not None:
+            # try:
             name = f"{model_teacher.name.split('/')[-1]}_teacher_{fold}.pt"
-        except AttributeError:
-            name = f"{model_teacher.module.name.split('/')[-1]}_teacher_{fold}.pt"
-        save_model_weights(model_teacher, name, cp_folder=log_folder, verbose=0)
-        try:
-            name = f"{model_distilled.name.split('/')[-1]}_distilled_{fold}.pt"
-        except AttributeError:
+            # except AttributeError:
+            #     name = f"{model_teacher.module.name.split('/')[-1]}_teacher_{fold}.pt"
+            save_model_weights(model_teacher, name, cp_folder=log_folder, verbose=0)
+        if model_distilled is not None:
+            # try:
+            #     name = f"{model_distilled.name.split('/')[-1]}_distilled_{fold}.pt"
+            # except AttributeError:
             name = f"{model_distilled.module.name.split('/')[-1]}_distilled_{fold}.pt"
-        save_model_weights(model_distilled, name, cp_folder=log_folder, verbose=0)
+            save_model_weights(model_distilled, name, cp_folder=log_folder, verbose=0)
 
     del (train_loader, val_loader, optimizer)
     torch.cuda.empty_cache()

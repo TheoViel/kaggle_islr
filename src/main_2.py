@@ -124,7 +124,7 @@ class Config:
     num_classes = 250
     num_classes_aux = 0
 
-    transfo_layers = 3
+    transfo_layers = 3  # 4
     embed_dim = 16
     dense_dim = 192
     transfo_dim = 768  # 1024
@@ -206,7 +206,7 @@ if __name__ == "__main__":
 
     if args.lr:
         config.optimizer_config["lr"] = args.lr
-        
+
     if args.mt_ema_decay:
         config.mt_config["ema_decay"] = args.mt_ema_decay
 
@@ -253,7 +253,7 @@ if __name__ == "__main__":
     if config.use_extra_data:
         df_extra = prepare_wsasl(DATA_PATH, config.processed_folder[:-1] + "_wlasl/")
 
-    #     df = df.head(10000).reset_index(drop=True)
+#     df = df.head(50000).reset_index(drop=True)
 
     k_fold(Config, df, df_extra=df_extra, log_folder=log_folder, run=run)
 

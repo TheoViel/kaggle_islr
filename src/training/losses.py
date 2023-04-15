@@ -10,6 +10,8 @@ class ConsistencyLoss(nn.Module):
         self.consistency_weight = config["consistency_weight"]
         self.rampup_length = config["rampup_length"]  # rampup steps
         self.aux_loss_weight = config.get("aux_loss_weight", 0)
+        self.mode = config.get('mode', "mse")
+        self.t = config.get('t', 1.)
 
     def sigmoid_rampup(self, current):
         if self.rampup_length == 0:
@@ -24,11 +26,19 @@ class ConsistencyLoss(nn.Module):
     def forward(
         self, student_pred, teacher_pred, step=1, student_pred_aux=None, teacher_pred_aux=None
     ):
-        w = self.get_consistency_weight(step) 
+        w = self.get_consistency_weight(step)
 
-        student_pred = student_pred.softmax(-1)
-        teacher_pred = teacher_pred.softmax(-1).detach().data
-        loss = ((student_pred - teacher_pred) ** 2).sum(-1).mean()
+        if self.mode == "mse":
+            student_pred = student_pred.softmax(-1)
+            teacher_pred = teacher_pred.softmax(-1).detach().data
+
+            loss = ((student_pred - teacher_pred) ** 2).sum(-1)
+        else:
+            student_pred = F.log_softmax(student_pred / self.t, dim=1)
+            teacher_pred = F.softmax(teacher_pred / self.t, dim=1)
+            loss = F.kl_div(
+                student_pred, teacher_pred, size_average=False
+            ) * (self.t**2) / teacher_pred.size(0)
 
         if not self.aux_loss_weight > 0:
             return w * loss.mean()
@@ -47,6 +57,11 @@ class ConsistencyLoss(nn.Module):
                 w_aux_tot += (self.aux_loss_weight * (layer + 1))
 
         return w * ((1 - w_aux_tot) * loss + w_aux_tot * loss_aux_tot)
+
+
+# def distillation(y, teacher_scores, labels, T, alpha):
+#     l_ce = F.cross_entropy(y, labels)
+#     return l_kl * alpha + l_ce * (1. - alpha)
 
 
 class SmoothCrossEntropyLoss(nn.Module):

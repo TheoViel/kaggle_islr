@@ -153,6 +153,8 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
         if model_distilled is not None:
             dist_parameters = count_parameters(model_distilled)
             print(f"    -> {dist_parameters} distilled parameters\n")
+        else:
+            print("")
 
     pred_val = fit(
         model,

@@ -243,9 +243,9 @@ def fit(
                     loss_dist = loss_fct(y_pred_dist, y_pred_aux_dist, data_distilled["target"], 0)
 
                     if model_teacher is not None:
-                        loss_dist += consistency_loss(y_pred_dist, y_pred_teacher, step)
+                        loss_dist += consistency_loss(y_pred_dist, y_pred_teacher, step, t=teacher_config['t'])
                     else:
-                        loss_dist += consistency_loss(y_pred_dist, y_pred, step)
+                        loss_dist += consistency_loss(y_pred_dist, y_pred, step, t=teacher_config['t'])
 
             scaler.scale(loss).backward()  # retain_graph=True ?
             if model_distilled is not None:

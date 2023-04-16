@@ -95,7 +95,7 @@ def kfold_inference_val(
         transfo_dim=config.transfo_dim if not distilled else config.transfo_dim - 256,
         dense_dim=config.dense_dim,
         transfo_heads=config.transfo_heads,
-        transfo_layers=config.transfo_layers,
+        transfo_layers=config.transfo_layers if not distilled else config.transfo_layers - 1,
         drop_rate=config.drop_rate,
         num_classes=config.num_classes,
         num_classes_aux=config.num_classes_aux,

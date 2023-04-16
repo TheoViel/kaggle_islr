@@ -162,6 +162,7 @@ class Config:
         "consistency_weight": 5,
         "rampup_prop": 0.25,
         "aux_loss_weight": 0.,
+        "t": 1,
     }
 
     epochs = 100

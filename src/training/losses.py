@@ -24,13 +24,13 @@ class ConsistencyLoss(nn.Module):
         return self.consistency_weight * self.sigmoid_rampup(epoch)
 
     def forward(
-        self, student_pred, teacher_pred, step=1, student_pred_aux=None, teacher_pred_aux=None
+        self, student_pred, teacher_pred, step=1, student_pred_aux=None, teacher_pred_aux=None, t=1.
     ):
         w = self.get_consistency_weight(step)
 
         if self.mode == "mse":
-            student_pred = student_pred.softmax(-1)
-            teacher_pred = teacher_pred.softmax(-1).detach().data
+            student_pred = (student_pred / t).softmax(-1)
+            teacher_pred = (teacher_pred / t).softmax(-1).detach().data
 
             loss = ((student_pred - teacher_pred) ** 2).sum(-1)
         else:

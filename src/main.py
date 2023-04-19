@@ -118,17 +118,15 @@ class Config:
     selected_folds = [0, 1, 2, 3]
 
     # Model
-    #     name = "gcn"
-    name = "mlp_bert_3"
-    #     name = "bi_bert"
+    name = "mlp_bert_3"  # mlp_bert_skip
     pretrained_weights = None  # "../logs/pretrain/2023-04-08/2/mlp_bert_3_0.pt"
     syncbn = False
     num_classes = 250
     num_classes_aux = 0
 
-    transfo_layers = 2
+    transfo_layers = 3
     embed_dim = 16
-    dense_dim = 512
+    dense_dim = 256
     transfo_dim = 768  # 1024
     transfo_heads = 16
     drop_rate = 0.05
@@ -138,7 +136,7 @@ class Config:
         "name": "ce",  # ce
         "smoothing": 0.3,
         "activation": "softmax",
-        "aux_loss_weight": 0.0,
+        "aux_loss_weight": 0.,
         "activation_aux": "softmax",
         "ousm_k": 3,
     }
@@ -152,7 +150,7 @@ class Config:
     optimizer_config = {
         "name": "AdamW",
         "lr": 3e-4,
-        "warmup_prop": 0.1,
+        "warmup_prop": 0.25,
         "betas": (0.9, 0.999),
         "max_grad_norm": 10.0,
     }
@@ -161,12 +159,13 @@ class Config:
         "ema_decay": 0.97,  # 0.99
         "consistency_weight": 3,
         "rampup_prop": 0.25,
+        "aux_loss_weight": 0.,
     }
 
     epochs = 100
 
     use_fp16 = True
-    model_soup = False
+    model_soup = True
 
     verbose = 1
     verbose_eval = 250

@@ -67,6 +67,11 @@ def evaluate(
     model.eval()
     val_losses = []
     preds, preds_aux = [], []
+    
+    try:
+        num_classes_aux = model.module.num_classes_aux
+    except AttributeError:
+        num_classes_aux = model.num_classes_aux
 
     with torch.no_grad():
         for data, _ in val_loader:
@@ -76,7 +81,13 @@ def evaluate(
 
             with torch.cuda.amp.autocast(enabled=use_fp16):
                 y_pred, y_pred_aux = model(data)
-                loss = loss_fct(y_pred.detach(), y_pred_aux.detach(), data["target"], 0)
+                
+                if isinstance(y_pred_aux, list):
+                    y_pred_aux = [y.detach() for y in y_pred_aux]
+                else:
+                    y_pred_aux = y_pred_aux.detach()
+
+                loss = loss_fct(y_pred.detach(), y_pred_aux, data["target"], 0)
 
             val_losses.append(loss.detach())
 
@@ -86,26 +97,26 @@ def evaluate(
                 y_pred = y_pred.softmax(-1)
 
             preds.append(y_pred.detach())
-            preds_aux.append(y_pred_aux.detach())
+            preds_aux.append(y_pred_aux)
 
     val_losses = torch.stack(val_losses)
     preds = torch.cat(preds, 0)
-    preds_aux = torch.cat(preds_aux, 0)
+    if num_classes_aux:
+        preds_aux = torch.cat(preds_aux, 0)
+    else:
+        preds_aux = 0
 
     if distributed:
         val_losses = sync_across_gpus(val_losses, world_size)
         preds = sync_across_gpus(preds, world_size)
-        try:
-            if model.module.num_classes_aux:
-                preds_aux = sync_across_gpus(preds_aux, world_size)
-        except AttributeError:
-            if model.num_classes_aux:
-                preds_aux = sync_across_gpus(preds_aux, world_size)
+        if num_classes_aux:
+            preds_aux = sync_across_gpus(preds_aux, world_size)
         torch.distributed.barrier()
 
     if local_rank == 0:
         preds = preds.cpu().numpy()
-        preds_aux = preds_aux.cpu().numpy()
+        if num_classes_aux:
+            preds_aux = preds_aux.cpu().numpy()
         val_loss = val_losses.cpu().numpy().mean()
         return preds, preds_aux, val_loss
     else:
@@ -194,9 +205,9 @@ def fit(
     for epoch in range(1, epochs + 1):
         if epoch in [min(50, epochs // 2), 100, 110]:
             if epoch == min(50, epochs // 2):
-                train_dataset.aug_strength = 2
+                train_dataset.aug_strength = min(train_dataset.aug_strength, 2)
             elif epoch == 100:
-                train_dataset.aug_strength = 1
+                train_dataset.aug_strength = min(train_dataset.aug_strength, 1)
             elif epoch == 110:
                 train_dataset.aug_strength = 0
 
@@ -228,7 +239,13 @@ def fit(
                     y_pred_teacher, y_pred_aux_teacher = model_teacher(data_teacher)
 
                 loss = loss_fct(y_pred, y_pred_aux, data["target"], 0)
-                loss += consistency_loss(y_pred, y_pred_teacher, step)
+                loss += consistency_loss(
+                    y_pred,
+                    y_pred_teacher,
+                    step=step,
+                    student_pred_aux=y_pred_aux,
+                    teacher_pred_aux=y_pred_aux_teacher,
+                )
 
             scaler.scale(loss).backward()
             avg_losses.append(loss.detach())
@@ -329,6 +346,12 @@ def fit(
                 save_model_weights(
                     model.module if distributed else model,
                     f"{name.split('/')[-1]}_{fold}_{epoch}.pt",
+                    cp_folder=log_folder,
+                    verbose=0,
+                )
+                save_model_weights(
+                    model_teacher,
+                    f"{model_teacher.name.split('/')[-1]}_teacher_{fold}_{epoch}.pt",
                     cp_folder=log_folder,
                     verbose=0,
                 )

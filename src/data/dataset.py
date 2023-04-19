@@ -153,6 +153,10 @@ class SignDataset(Dataset):
         other_data = resize(other_data, data["x"].size(0))
 
         # Replace face
+#         ids = torch.isin(data["type"][0], torch.tensor([4]))
+#         replaced = torch.isin(data["type"], torch.tensor([4]))
+#         ids = torch.isin(data["type"][0], torch.tensor([3, 6, 7, 8, 9, 10, 11]))
+#         replaced = torch.isin(data["type"], torch.tensor([3, 6, 7, 8, 9, 10, 11]))
         ids = torch.isin(data["type"][0], torch.tensor([3, 4, 6]))
         replaced = torch.isin(data["type"], torch.tensor([3, 4, 6]))
 

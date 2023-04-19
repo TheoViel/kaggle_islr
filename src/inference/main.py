@@ -44,7 +44,7 @@ def uniform_soup(model, weights, device="cpu", by_name=False):
 
 
 def kfold_inference_val(
-    df, exp_folder, debug=False, save=True, use_tta=False, use_fp16=False, train=False, use_mt=False, distilled=False
+    df, exp_folder, debug=False, save=True, use_tta=False, use_fp16=False, train=False, use_mt=False, distilled=False, n_soup=0
 ):
     """
     Main inference function for validation data.
@@ -87,15 +87,17 @@ def kfold_inference_val(
     for fold in config.selected_folds:
         print(f"\n- Fold {fold + 1}")
 
-        if config.model_soup:
-            weights = [f for f in sorted(glob.glob(exp_folder + f"{config.name}_{fold}_*.pt"))][-1:]
-            # weights += [
-            #     f for f in sorted(glob.glob("../logs/2023-03-30/3/" + f"*_{fold}.pt"))
-            #     if "fullfit" not in f
-            # ]
+        if config.model_soup and n_soup > 1:
+            if use_mt:
+                weights = [exp_folder + f"{config.name}_teacher_{fold}_{ep}.pt" for ep in range(config.epochs - n_soup, config.epochs + 1)]
+            else:
+                weights = [exp_folder + f"{config.name}_{fold}_{ep}.pt" for ep in range(config.epochs - n_soup, config.epochs + 1)]
+            
+            weights = weights[-n_soup:]
             print("Soup :", weights)
             model = uniform_soup(model, weights)
             model = model.cuda().eval()
+
         else:
             if use_mt:
                 weights = exp_folder + f"{config.name}_teacher_{fold}.pt"

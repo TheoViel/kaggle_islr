@@ -57,6 +57,19 @@ def define_model(
             drop_rate=drop_rate,
             max_len=max_len,
         )
+    elif name == "mlp_bert_skip":
+        model = SignMLPBertSkip(
+            embed_dim=embed_dim,
+            dense_dim=dense_dim,
+            transfo_dim=transfo_dim,
+            transfo_heads=transfo_heads,
+            transfo_layers=transfo_layers,
+            num_classes=num_classes,
+            num_classes_aux=num_classes_aux,
+            n_landmarks=n_landmarks,
+            drop_rate=drop_rate,
+            max_len=max_len,
+        )
     elif name == "mlp_cnn":
         model = SignMLPCNN(
             embed_dim=embed_dim,
@@ -289,13 +302,22 @@ class SignMLPBert3(nn.Module):
         self.num_classes_aux = num_classes_aux
         self.transfo_heads = transfo_heads
         self.multi_sample_dropout = False
+        self.use_cnn = True
 
         self.type_embed = nn.Embedding(9, embed_dim, padding_idx=0)
         self.landmark_embed = nn.Embedding(n_landmarks + 1, embed_dim, padding_idx=0)
         self.type_norm = nn.LayerNorm(embed_dim)
         self.landmark_norm = nn.LayerNorm(embed_dim)
 
-        self.pos_dense = nn.Linear(9, embed_dim)
+        if self.use_cnn:
+            self.pos_cnn = nn.Sequential(
+                nn.Conv1d(3, 8, kernel_size=5, stride=1, padding=2, bias=False),
+                nn.Conv1d(8, 16, kernel_size=5, stride=1, padding=2, bias=False),
+            )
+            self.pos_dense = nn.Linear(19, embed_dim)
+        else:
+            self.pos_dense = nn.Linear(9, embed_dim)
+
         self.dense = nn.Linear(3 * embed_dim, embed_dim)
 
         #         self.dists_mlp = nn.Sequential(
@@ -309,50 +331,50 @@ class SignMLPBert3(nn.Module):
             nn.Linear(embed_dim * 21, dense_dim),
             nn.BatchNorm1d(dense_dim),
             nn.Dropout(p=drop_rate),
-            nn.LeakyReLU(),
+            nn.Mish(),
         )
 
         self.right_hand_mlp = nn.Sequential(
             nn.Linear(embed_dim * 21, dense_dim),
             nn.BatchNorm1d(dense_dim),
             nn.Dropout(p=drop_rate),
-            nn.LeakyReLU(),
+            nn.Mish(),
         )
 
         self.lips_mlp = nn.Sequential(
             nn.Linear(embed_dim * 21, dense_dim),
             nn.BatchNorm1d(dense_dim),
             nn.Dropout(p=drop_rate),
-            nn.LeakyReLU(),
+            nn.Mish(),
         )
 
         self.face_mlp = nn.Sequential(
             nn.Linear(embed_dim * 25, dense_dim),
             nn.BatchNorm1d(dense_dim),
             nn.Dropout(p=drop_rate),
-            nn.LeakyReLU(),
+            nn.Mish(),
         )
 
         self.full_mlp = nn.Sequential(
             nn.Linear(embed_dim * n_landmarks, dense_dim),
             nn.BatchNorm1d(dense_dim),
             nn.Dropout(p=drop_rate),
-            nn.LeakyReLU(),
+            nn.Mish(),
         )
 
-        delta = 128 if transfo_dim < 1000 else 256
-        transfo_dim -= delta * (transfo_layers - 1)
-        #         transfo_dim -= delta * 2
+        transfo_dim_ = transfo_dim
+        if transfo_layers == 3:  # 512, 768, 1024 / 768
+            delta = 256
+            transfo_dim = 512
+        else:  # 768, 768 
+            delta = 0
 
         self.landmark_mlp = nn.Sequential(
             nn.Linear(dense_dim * 4, transfo_dim),
             nn.BatchNorm1d(transfo_dim),
             nn.Dropout(p=drop_rate),
-            nn.LeakyReLU(),
+            nn.Mish(),
         )
-
-        #         pos_embed = positional_encoding(max_len, transfo_dim)
-        #         self.pos_embed = nn.Parameter(pos_embed)
 
         name = "microsoft/deberta-v3-base"
 
@@ -366,7 +388,7 @@ class SignMLPBert3(nn.Module):
         config.num_attention_heads = transfo_heads
         config.attention_probs_dropout_prob = drop_rate
         config.hidden_dropout_prob = drop_rate
-        config.hidden_act = "relu"
+        config.hidden_act = nn.Mish()  # "relu"
         config.max_relative_positions = max_len
         config.position_buckets = max_len
         config.skip_output = True
@@ -378,8 +400,10 @@ class SignMLPBert3(nn.Module):
         if transfo_layers >= 2:
             config.hidden_size += delta
             config.intermediate_size += delta
-            if transfo_layers >= 3:
+            
+            if transfo_layers >= 3 and transfo_dim_ == 1024:
                 config.output_size += delta
+
             config.attention_probs_dropout_prob *= 2
             config.hidden_dropout_prob *= 2
             self.frame_transformer_2 = DebertaV2Encoder(config)
@@ -387,10 +411,12 @@ class SignMLPBert3(nn.Module):
 
         self.frame_transformer_3 = None
         if transfo_layers >= 3:
-            config.hidden_size += delta
-            config.intermediate_size += delta
-            config.attention_probs_dropout_prob *= 2
-            config.hidden_dropout_prob *= 2
+            if transfo_dim_ == 1024:
+                config.hidden_size += delta
+                config.intermediate_size += delta
+                config.attention_probs_dropout_prob *= 2
+                config.hidden_dropout_prob *= 2
+
             self.frame_transformer_3 = DebertaV2Encoder(config)
             self.frame_transformer_3.layer[0].output = DebertaV2Output(config)
 
@@ -416,17 +442,29 @@ class SignMLPBert3(nn.Module):
         x_type = self.type_norm(self.type_embed(x["type"]))
         x_landmark = self.landmark_norm(self.landmark_embed(x["landmark"]))
         x_pos = torch.stack([x["x"], x["y"], x["z"]], -1)
+        
+#         print(x_pos.size())
 
         #         dists = torch.cat([
         #             compute_finger_face_distance(x_pos),
         #             compute_hand_features(x_pos, x["type"])
         #         ], -1)
         #         dists_fts = self.dists_mlp(dists.view(bs * n_frames, -1))
+        
+        if self.use_cnn:
+            x_pos = x_pos.transpose(1, 2).transpose(2, 3).contiguous().view(bs * n_landmarks, -1, n_frames)
+            x_pos = self.pos_cnn(x_pos)
+            x_pos = x_pos.view(bs, n_landmarks, -1, n_frames).transpose(2, 3).transpose(1, 2).contiguous()
+            x_pos = torch.cat([torch.stack([x["x"], x["y"], x["z"]], -1), x_pos], -1)
+        else:
+            x_pos = add_shift(x_pos)
 
-        x_pos = add_shift(x_pos)
         x_pos = self.pos_dense(x_pos)
 
         fts = self.dense(torch.cat([x_type, x_landmark, x_pos], -1))
+        
+        fts = fts[:, :20].contiguous()
+        n_frames = 20
 
         n_fts = fts.size(-1)
         embed = x["type"][:, 0].unsqueeze(1).repeat(1, n_frames, 1).view(-1)
@@ -456,10 +494,7 @@ class SignMLPBert3(nn.Module):
         fts = self.landmark_mlp(fts)
         fts = fts.view(bs, n_frames, -1)
 
-        #         fts = self.cnn(fts.transpose(1, 2)).transpose(1, 2)
-        #         fts = fts + self.pos_embed[:n_frames].unsqueeze(0)
-
-        mask = x["mask"][:, :, 0]
+        mask = x["mask"][:, :, 0][:, :n_frames]
         fts *= mask.unsqueeze(-1)  # probably useless but kept for now
 
         fts = self.frame_transformer_1(fts, mask).last_hidden_state
@@ -468,7 +503,7 @@ class SignMLPBert3(nn.Module):
         if self.frame_transformer_3 is not None:
             fts = self.frame_transformer_3(fts, mask).last_hidden_state
 
-        mask = x["mask"][:, :, 0].unsqueeze(-1)
+        mask = x["mask"][:, :, 0].unsqueeze(-1)[:, :n_frames]
         fts = fts * mask
         fts = fts.sum(1) / mask.sum(1)  # masked avg
 

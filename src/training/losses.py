@@ -9,6 +9,7 @@ class ConsistencyLoss(nn.Module):
         super().__init__()
         self.consistency_weight = config["consistency_weight"]
         self.rampup_length = config["rampup_length"]  # rampup steps
+        self.aux_loss_weight = config.get("aux_loss_weight", 0)
 
     def sigmoid_rampup(self, current):
         if self.rampup_length == 0:
@@ -20,16 +21,32 @@ class ConsistencyLoss(nn.Module):
     def get_consistency_weight(self, epoch):
         return self.consistency_weight * self.sigmoid_rampup(epoch)
 
-    def forward(self, student_pred, teacher_pred, step):
+    def forward(
+        self, student_pred, teacher_pred, step=1, student_pred_aux=None, teacher_pred_aux=None
+    ):
+        w = self.get_consistency_weight(step)
+        
         student_pred = student_pred.softmax(-1)
         teacher_pred = teacher_pred.softmax(-1).detach().data
+        loss = ((student_pred - teacher_pred) ** 2).sum(-1).mean()
 
-        loss = ((student_pred - teacher_pred) ** 2).sum(-1)
+        if not self.aux_loss_weight > 0:
+            return w * loss.mean()
 
-        w = self.get_consistency_weight(step)
-#         print(step, "/", self.rampup_length, w)
+        w_aux_tot = 0
+        loss_aux_tot = 0
+        if isinstance(student_pred_aux, list):
+            assert isinstance(teacher_pred_aux, list)
 
-        return w * loss.mean()
+            for layer, (sp, tp) in enumerate(zip(student_pred_aux, teacher_pred_aux)):
+                sp = sp.softmax(-1)
+                tp = tp.softmax(-1).detach().data
+                loss_aux = ((sp - tp) ** 2).sum(-1)
+
+                loss_aux_tot += (self.aux_loss_weight * (layer + 1)) * loss_aux.mean()
+                w_aux_tot += (self.aux_loss_weight * (layer + 1))
+
+        return w * ((1 - w_aux_tot) * loss + w_aux_tot * loss_aux_tot)
 
 
 class SmoothCrossEntropyLoss(nn.Module):
@@ -139,7 +156,18 @@ class SignLoss(nn.Module):
         if not self.aux_loss_weight > 0:
             return loss
 
-        y_aux = self.embed[y]
-        loss_aux = self.loss_aux(pred_aux, y_aux).mean()
+        w_aux_tot = 0
+        loss_aux_tot = 0
+        if isinstance(pred_aux, list):
+            for layer, p in enumerate(pred_aux):
+                loss_aux = self.loss(p, y)
 
-        return loss + self.aux_loss_weight * loss_aux
+                if self.ousm_k:
+                    loss_aux = loss_aux.index_select(0, idxs)
+
+                loss_aux = loss_aux.mean()
+
+                loss_aux_tot += (self.aux_loss_weight * (layer + 1)) * loss_aux
+                w_aux_tot += (self.aux_loss_weight * (layer + 1))
+
+        return (1 - w_aux_tot) * loss + w_aux_tot * loss_aux_tot

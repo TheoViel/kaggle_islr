@@ -14,7 +14,6 @@
 # limitations under the License.
 """Optimized Deberta"""
 
-import nobuco
 import numpy as np
 import torch
 import torch.utils.checkpoint
@@ -360,9 +359,9 @@ class DisentangledSelfAttention(nn.Module):
         self.selector = Selector()
 
     def transpose_for_scores(self, x, attention_heads):
-        new_x_shape = nobuco.shape(x)[:-1] + (attention_heads, -1)
+        new_x_shape = x.size()[:-1] + (attention_heads, -1)
         x = x.view(new_x_shape)
-        return x.permute(0, 2, 1, 3).contiguous().view(-1, nobuco.shape(x)[1], nobuco.shape(x)[-1])
+        return x.permute(0, 2, 1, 3).contiguous().view(-1, x.size(1), x.size(-1))
 
     def forward(
         self,
@@ -429,8 +428,8 @@ class DisentangledSelfAttention(nn.Module):
         attention_scores = attention_scores.view(
             -1,
             self.num_attention_heads,
-            nobuco.shape(attention_scores)[-2],
-            nobuco.shape(attention_scores)[-1],
+            attention_scores.size(-2),
+            attention_scores.size(-1),
         )
 
         # bsz x height x length x dimension
@@ -440,22 +439,21 @@ class DisentangledSelfAttention(nn.Module):
 
         context_layer = torch.bmm(
             attention_probs.view(
-                -1, nobuco.shape(attention_probs)[-2], nobuco.shape(attention_probs)[-1]
+                -1, attention_probs.size(-2), attention_probs.size(-1)
             ),
             value_layer,
         )
-        
         context_layer = (
             context_layer.view(
                 -1,
                 self.num_attention_heads,
-                nobuco.shape(context_layer)[-2],
-                nobuco.shape(context_layer)[-1],
+                context_layer.size(-2),
+                context_layer.size(-1),
             )
             .permute(0, 2, 1, 3)
             .contiguous()
         )
-        new_context_layer_shape = nobuco.shape(context_layer)[:-2] + (-1,)
+        new_context_layer_shape = context_layer.size()[:-2] + (-1,)
         context_layer = context_layer.view(new_context_layer_shape)
         if output_attentions:
             return (context_layer, attention_probs)
@@ -483,30 +481,35 @@ class DisentangledSelfAttention(nn.Module):
         ids = torch.from_numpy(ids)
         ids = ids.expand(self.num_attention_heads, -1, -1).contiguous()
         ids += torch.from_numpy(
-            np.arange(nobuco.shape(ids)[0]) * self.position_buckets * 2 * max_len
+            np.arange(ids.size(0)) * self.position_buckets * 2 * max_len
         ).view(-1, 1, 1)
 
         return ids
 
     def my_gather(self, c2p_att, dim=2, transpose=False):
-        bs, sz, n_fts = nobuco.shape(c2p_att)
+        bs, sz, n_fts = c2p_att.size()
 
         if transpose:
             ids = (
-                self.ids_t[sz, :, : sz, : sz]
+                self.ids_t[c2p_att.size(1), :, : c2p_att.size(1), : c2p_att.size(1)]
                 .contiguous()
                 .view(-1)
             )
         else:
             ids = (
-                self.ids[sz, :, : sz, : sz]
+                self.ids[c2p_att.size(1), :, : c2p_att.size(1), : c2p_att.size(1)]
                 .contiguous()
                 .view(-1)
             )
 
         c2p_att = c2p_att.view(-1)
-        
+
+#         print('!!!')
+#         print(c2p_att.size())
+#         print(ids.size())
+#         print()
         y = self.selector(c2p_att, ids).view(bs, sz, sz)
+
 #         y = c2p_att[ids].view(bs, sz, sz)
         return y
 
@@ -548,7 +551,7 @@ class DisentangledSelfAttention(nn.Module):
 
         return score
 
-    
+
 class Selector(nn.Module):
     def forward(self, x, ids):
 #         print(x.dtype, ids.dtype)

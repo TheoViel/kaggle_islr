@@ -6,7 +6,6 @@ opencv-python-headless==4.5.5.64
 scikit-learn==1.1.3
 einops==0.4.1
 timm==0.6.12
-merlin-dataloader==0.0.2
 numerize
 nb_black
 tensorflow
@@ -15,3 +14,4 @@ tflite-runtime==2.9.1
 tf2onnx
 tensorflow_probability
 onnxruntime
+nobuco==0.2.1

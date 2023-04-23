@@ -282,11 +282,33 @@ def resize(data, p=0.5, max_size=50):
     return data
 
 
+def crop(data, max_crop=0.2, p=0.5):
+    if np.random.random() > p:
+        return data
+    
+    if len(data["x"]) < 20:  # too short
+        return data
+    
+    crop = np.random.randint(1, int(len(data["x"]) * max_crop))
+    if np.random.random() > 0.5:  # left
+        return {
+            k: (data[k][crop:] if k != "target" else data[k])
+            for k in data.keys()
+        }
+    else:
+        return {
+            k: (data[k][:-crop] if k != "target" else data[k])
+            for k in data.keys()
+        }
+
+
 def augment(data, aug_strength=0):
+    
     if aug_strength == 3:
         data = interpolate(data, p=0.5)
         data = flip(data, p=0.5)
         data = rotate(data, p=0.5)
+        data = crop(data, p=0.5)
         data = scale(data, p=0.25)
 
     #         data = add_noise(data, snr=50, p=0.5)
@@ -298,6 +320,7 @@ def augment(data, aug_strength=0):
         data = flip(data, p=0.5)
         data = rotate(data, p=0.5)
         data = scale(data, p=0.25)
+        data = crop(data, p=0.25)
 
     elif aug_strength == 1:
         #         data = interpolate(data, p=0.5)

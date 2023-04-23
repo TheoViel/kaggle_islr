@@ -7,33 +7,10 @@ from transformers import get_linear_schedule_with_warmup
 
 from data.loader import define_loaders
 from training.losses import SignLoss, ConsistencyLoss
-from training.optim import define_optimizer
-
+from training.optim import define_optimizer, update_teacher_params, AWP
+from model_zoo.utils import modify_drop
 from utils.metrics import accuracy
 from utils.torch import sync_across_gpus, save_model_weights
-
-
-def trim_tensors(data, min_len=10):
-    """
-    Trim tensors so that within a batch, padding is shortened.
-    This speeds up training for RNNs and Transformers.
-
-    Args:
-        data (dict of torch tensors): Batch.
-        min_len (int, optional): Minimum trimming size. Defaults to 10.
-    Returns:
-        dict of torch tensors: Trimmed tensors.
-    """
-    max_len = (data["type"][:, :, 0] != 0).sum(1).max()
-    max_len = max(max_len, min_len)
-    return {k: data[k][:, :max_len].contiguous() for k in data.keys()}
-
-
-def update_teacher_params(student, teacher, alpha, global_step):
-    # Use the true average until the exponential average is more correct
-    alpha = min(1 - 1 / (global_step + 1), alpha)
-    for ema_param, param in zip(teacher.parameters(), student.parameters()):
-        ema_param.data.mul_(alpha).add_(1 - alpha, param.data)
 
 
 def evaluate(
@@ -77,7 +54,6 @@ def evaluate(
         for data, _ in val_loader:
             for k in data.keys():
                 data[k] = data[k].cuda()
-            #             data = trim_tensors(data)
 
             with torch.cuda.amp.autocast(enabled=use_fp16):
                 y_pred, y_pred_aux = model(data)
@@ -172,6 +148,7 @@ def fit(
         optimizer_config["name"],
         lr=optimizer_config["lr"],
         betas=optimizer_config["betas"],
+        weight_decay=optimizer_config["weight_decay"],
     )
 
     train_loader, val_loader = define_loaders(
@@ -196,6 +173,14 @@ def fit(
 
     mt_config["rampup_length"] = int(num_training_steps * mt_config["rampup_prop"])
     consistency_loss = ConsistencyLoss(mt_config)
+    
+#     if optimizer_config['use_awp']:
+#         awp = AWP(
+#             model,
+#             optimizer,
+#             adv_lr=optimizer_config['awp_lr'],
+#             adv_eps=optimizer_config['awp_eps'],
+#         )
 
     step = 1
     acc = 0
@@ -203,13 +188,22 @@ def fit(
     avg_losses = []
     start_time = time.time()
     for epoch in range(1, epochs + 1):
-        if epoch in [min(50, epochs // 2), 100, 110]:
+#         if epoch == 1:
+#             modify_drop(model, factor=2)
+#         elif epoch == int(epochs * 0.25):
+#             modify_drop(model, factor=0.5)
+#         elif epoch == int(epochs * 0.5):
+#             modify_drop(model, factor=0.5)
+#         elif epoch == int(epochs * 0.75):
+#             modify_drop(model, factor=0.5)
+
+        if epoch in [min(50, epochs // 2)]:  # , 100, 110]:
             if epoch == min(50, epochs // 2):
                 train_dataset.aug_strength = min(train_dataset.aug_strength, 2)
-            elif epoch == 100:
-                train_dataset.aug_strength = min(train_dataset.aug_strength, 1)
-            elif epoch == 110:
-                train_dataset.aug_strength = 0
+#             elif epoch == 100:
+#                 train_dataset.aug_strength = min(train_dataset.aug_strength, 1)
+#             elif epoch == 110:
+#                 train_dataset.aug_strength = 0
 
             train_loader, val_loader = define_loaders(
                 train_dataset,
@@ -221,6 +215,7 @@ def fit(
                 world_size=world_size,
                 local_rank=local_rank,
             )
+    
         if distributed:
             try:
                 train_loader.sampler.set_epoch(epoch)
@@ -234,7 +229,7 @@ def fit(
 
             with torch.cuda.amp.autocast(enabled=use_fp16):
                 y_pred, y_pred_aux = model(data)
-
+                    
                 with torch.no_grad():
                     y_pred_teacher, y_pred_aux_teacher = model_teacher(data_teacher)
 
@@ -249,6 +244,16 @@ def fit(
 
             scaler.scale(loss).backward()
             avg_losses.append(loss.detach())
+            
+#             if (
+#                 optimizer_config['use_awp'] and
+#                 (step % optimizer_config['awp_period']) == 0 and
+#                 step > optimizer_config["awp_start_step"]
+#             ):
+#                 awp.perturb()
+                
+#             if optimizer_config['use_awp']:
+#                 awp.restore()
 
             scaler.unscale_(optimizer)
             if optimizer_config["max_grad_norm"]:

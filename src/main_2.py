@@ -105,8 +105,8 @@ class Config:
     save_weights = True
 
     # Data
-    processed_folder = "torch_12/"
-    max_len = 25
+    processed_folder = "torch_16/"
+    max_len = 30
     resize_mode = "pad"
     aug_strength = 3
     use_extra_data = False
@@ -124,9 +124,9 @@ class Config:
     num_classes = 250
     num_classes_aux = 0
 
-    transfo_layers = 2
+    transfo_layers = 3
     embed_dim = 16
-    dense_dim = 256
+    dense_dim = 192
     transfo_dim = 768  # 1024
     transfo_heads = 16
     drop_rate = 0.05

@@ -126,7 +126,7 @@ class Config:
 
     transfo_layers = 3
     embed_dim = 16
-    dense_dim = 256
+    dense_dim = 192
     transfo_dim = 768  # 1024
     transfo_heads = 16
     drop_rate = 0.05
@@ -153,11 +153,18 @@ class Config:
         "warmup_prop": 0.25,
         "betas": (0.9, 0.999),
         "max_grad_norm": 10.0,
+        "weight_decay": 0.4,
+#         # AWP
+#         "use_awp": True,
+#         "awp_start_step": 1,
+#         "awp_lr": 1e-3,
+#         "awp_eps": 1e-3,
+#         "awp_period": 1,
     }
 
     mt_config = {
         "ema_decay": 0.97,  # 0.99
-        "consistency_weight": 3,
+        "consistency_weight": 5,
         "rampup_prop": 0.25,
         "aux_loss_weight": 0.,
     }

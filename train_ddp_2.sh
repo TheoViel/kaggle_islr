@@ -7,6 +7,6 @@ torchrun --nproc_per_node=8 main_2.py
 
 echo
 
-torchrun --nproc_per_node=8 main_2.py --epochs 200
+# torchrun --nproc_per_node=8 main_2.py --mt-ema-decay 0.98
 
-echo
+# echo

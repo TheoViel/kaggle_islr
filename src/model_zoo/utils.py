@@ -1,5 +1,17 @@
 import torch
+import torch.nn as nn
+from transformers.models.deberta_v2.modeling_deberta_v2 import StableDropout
 
+
+def modify_drop(model, factor=1):
+    for n, module in model.named_modules():
+        if isinstance(module, nn.Dropout):
+            module.p *= factor
+#             print(n, module.p)
+        elif isinstance(module, StableDropout):
+            module.drop_prob *= factor
+#             print(n, module.drop_prob)
+            
 
 def compute_adjacency_features(x, embed):
     bs, n_frames, n_landmarks, n_fts = x.size()

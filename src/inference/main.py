@@ -12,7 +12,7 @@ from utils.metrics import accuracy
 from inference.predict import predict, predict_tta
 
 
-def uniform_soup(model, weights, device="cpu", by_name=False):
+def uniform_soup(model, weights, device="cpu", by_name=False, weighting="uniform"):
     if not isinstance(weights, list):
         weights = [weights]
 
@@ -31,12 +31,23 @@ def uniform_soup(model, weights, device="cpu", by_name=False):
         for k, v in weight_dict.items():
             soups[k].append(v)
 
+    if weighting == "uniform":
+        w = torch.ones(len(weights))
+    else:
+        w = torch.from_numpy(np.arange(1, len(weights) + 1))
+        print("Weighting", w.numpy())
+
     if 0 < len(soups):
         soups = {
-            k: (torch.sum(torch.stack(v), axis=0) / len(v)).type(v[0].dtype)
+            k: (torch.sum(torch.stack(v) * w.view([-1] + [1] * len(v[0].size())), axis=0) / w.sum()).type(v[0].dtype)
             for k, v in soups.items()
             if len(v) != 0
         }
+#         soups = {
+#             k: (torch.sum(torch.stack(v), axis=0) / len(v)).type(v[0].dtype)
+#             for k, v in soups.items()
+#             if len(v) != 0
+#         }
         model_dict.update(soups)
         model.load_state_dict(model_dict)
 
@@ -94,7 +105,7 @@ def kfold_inference_val(
                 weights = [exp_folder + f"{config.name}_{fold}_{ep}.pt" for ep in range(config.epochs - n_soup, config.epochs + 1)]
             
             weights = weights[-n_soup:]
-            print("Soup :", weights)
+            print("\nSoup :", weights)
             model = uniform_soup(model, weights)
             model = model.cuda().eval()
 
@@ -106,6 +117,40 @@ def kfold_inference_val(
             else:
                 weights = exp_folder + f"{config.name}_{fold}.pt"
             model = load_model_weights(model, weights, verbose=1)
+
+#         import torch.nn.utils.prune as prune
+#         to_prune = (
+# #             model.left_hand_mlp[0],
+# #             model.right_hand_mlp[0],
+# #             model.face_mlp[0],
+# #             model.full_mlp[0],
+# #             model.landmark_mlp[0],
+# #             model.frame_transformer_1.layer[0].attention.self.query_proj,
+# #             model.frame_transformer_1.layer[0].attention.self.key_proj,
+# #             model.frame_transformer_1.layer[0].attention.self.value_proj,
+# #             model.frame_transformer_1.layer[0].attention.output.dense,
+# #             model.frame_transformer_1.layer[0].intermediate.dense,
+# #             model.frame_transformer_1.layer[0].output.dense,
+
+# #             model.frame_transformer_2.layer[0].attention.self.query_proj,
+# #             model.frame_transformer_2.layer[0].attention.self.key_proj,
+# #             model.frame_transformer_2.layer[0].attention.self.value_proj,
+# #             model.frame_transformer_2.layer[0].attention.output.dense,
+# #             model.frame_transformer_2.layer[0].intermediate.dense,
+# #             model.frame_transformer_2.layer[0].output.dense,
+
+# #             model.frame_transformer_3.layer[0].attention.self.query_proj,
+# #             model.frame_transformer_3.layer[0].attention.self.key_proj,
+# #             model.frame_transformer_3.layer[0].attention.self.value_proj,
+#             model.frame_transformer_3.layer[0].attention.output.dense,
+#             model.frame_transformer_3.layer[0].intermediate.dense,
+#             model.frame_transformer_3.layer[0].output.dense,
+#         )
+#         for module in to_prune:
+#             for name in ['weight']:
+#                 for dim in [1]:
+#                     prune.ln_structured(module, name=name, amount=0.01, n=1, dim=dim)
+#                     torch.nn.utils.prune.remove(module, name)
 
         if train:
             val_idx = list(df[df["fold"] != fold].index)
@@ -142,7 +187,7 @@ def kfold_inference_val(
 
         pred_oof[fold, val_idx] = pred_val
 
-    #         break
+#         break
 
     if not train:
         pred_oof = pred_oof.sum(0)

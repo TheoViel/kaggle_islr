@@ -7,6 +7,6 @@ torchrun --nproc_per_node=8 main.py
 
 echo
 
-# torchrun --nproc_per_node=8 main.py --epochs 120
+# torchrun --nproc_per_node=8 main.py
 
 # echo

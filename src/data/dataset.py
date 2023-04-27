@@ -6,7 +6,7 @@ from torch.utils.data import Dataset, DataLoader
 
 from data.transforms import (
     augment,
-    # normalize,
+    normalize,
     # interpolate,
     flip,
     add_missing_hand,
@@ -77,6 +77,7 @@ class SignDataset(Dataset):
         aug_strength=0,
         resize_mode="pad",
         train=False,
+        dist=False,
     ):
         """
         Constructor
@@ -89,6 +90,7 @@ class SignDataset(Dataset):
         self.max_len = max_len
         self.aug_strength = aug_strength
         self.train = train
+        self.dist = dist
         self.resize_mode = resize_mode
 
         self.paths = df["processed_path"].values
@@ -126,7 +128,6 @@ class SignDataset(Dataset):
         other_idx = np.random.choice(
             list(self.df[self.df["target"] == self.targets[idx]].index)
         )
-        #         print(other_idx)
 
         try:
             frames = self.buffer[other_idx]
@@ -219,27 +220,48 @@ class SignDataset(Dataset):
 
         data["target"] = torch.tensor([self.targets[idx]], dtype=torch.float)
 
-        data_mt = copy.deepcopy(data)
-
+        data_mt, data_dist = 0, 0
         if self.train:
+            data_mt = copy.deepcopy(data)
+            if self.dist:
+                data_dist = copy.deepcopy(data)
+
             if self.aug_strength >= 3:
                 data = self.mix_face(data, idx, p=0.25)
                 data = add_missing_hand(data, p=0.25)
                 data_mt = self.mix_face(data_mt, idx, p=0.25)
                 data_mt = add_missing_hand(data_mt, p=0.25)
+                if self.dist:
+                    data_dist = self.mix_face(data_dist, idx, p=0.25)
+                    data_dist = add_missing_hand(data_dist, p=0.25)
 
             data = augment(data, aug_strength=self.aug_strength)
+
             data_mt = augment(data_mt, aug_strength=self.aug_strength)
+            data_mt["mask"] = torch.ones(data_mt["x"].size())
+
+            if self.dist:
+                data_dist = augment(data_dist, aug_strength=self.aug_strength)
+                data_dist["mask"] = torch.ones(data_dist["x"].size())
+
+#                 data_dist = normalize(data_dist)
+#             data_mt = normalize(data_mt)
+#         data = normalize(data)
 
         data["mask"] = torch.ones(data["x"].size())
-        data_mt["mask"] = torch.ones(data_mt["x"].size())
-
+        
         if self.max_len is not None:
             if self.resize_mode == "pad":
                 data = crop_or_pad(data, max_len=self.max_len)
-                data_mt = crop_or_pad(data_mt, max_len=self.max_len)
+                if self.train:
+                    data_mt = crop_or_pad(data_mt, max_len=self.max_len)
+                    if self.dist:
+                        data_dist = crop_or_pad(data_dist, max_len=self.max_len)
             else:
                 data = resize(data, size=self.max_len)
-                data_mt = resize(data_mt, size=self.max_len)
+                if self.train:
+                    data_mt = resize(data_mt, size=self.max_len)
+                    if self.dist:
+                        data_dist = resize(data_dist, size=self.max_len)
 
-        return data, data_mt
+        return data, data_mt, data_dist

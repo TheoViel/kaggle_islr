@@ -38,6 +38,7 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
         aug_strength=config.aug_strength,
         resize_mode=config.resize_mode,
         train=True,
+        dist=config.mt_config['distill'],
     )
 
     val_dataset = SignDataset(
@@ -94,9 +95,36 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
         max_len=config.max_len,
         verbose=(config.local_rank == 0),
     ).cuda()
-    for param in model_teacher.parameters():
-        param.detach_()
 
+    model_distilled = None
+    if config.mt_config['distill']:
+        if config.transfo_dim == 1024:
+            distill_transfo_dim = 768
+            distill_dense_dim = 192  # 256
+            distill_transfo_layers = 3
+        elif config.transfo_dim == 768:
+            distill_transfo_dim = 512
+            distill_dense_dim = 192
+            distill_transfo_layers = 2
+        else:
+            raise NotImplementedError
+
+        model_distilled = define_model(
+            config.name,
+            pretrained_weights=pretrained_weights,
+            embed_dim=config.embed_dim,
+            transfo_dim=distill_transfo_dim,
+            dense_dim=distill_dense_dim,
+            transfo_heads=config.transfo_heads,
+            transfo_layers=distill_transfo_layers,
+            drop_rate=config.drop_rate,
+            num_classes=config.num_classes,
+            num_classes_aux=config.num_classes_aux,
+            n_landmarks=config.n_landmarks,
+            max_len=config.max_len,
+            verbose=0,
+        ).cuda()
+        
     if config.distributed:
         if config.syncbn:
             model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
@@ -107,27 +135,47 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
             find_unused_parameters=False,
             broadcast_buffers=config.syncbn,
         )
+        
+        if model_distilled is not None:
+            model_distilled = DistributedDataParallel(
+                model_distilled,
+                device_ids=[config.local_rank],
+                find_unused_parameters=False,
+                broadcast_buffers=config.syncbn,
+            )
 
-    try:
-        model = torch.compile(model, mode="reduce-overhead")
-        if config.local_rank == 0:
-            print("Using torch 2.0 acceleration !\n")
-    except Exception:
-        pass
+#     try:
+#         model = torch.compile(model, mode="reduce-overhead")
+#         if config.local_rank == 0:
+#             print("Using torch 2.0 acceleration !\n")
+#     except Exception:
+#         pass
 
     model.zero_grad(set_to_none=True)
     model.train()
+    
+    if model_distilled is not None:
+        model_distilled.zero_grad(set_to_none=True)
+        model_distilled.train()
 
+    for param in model_teacher.parameters():
+        param.detach_()
+        
     n_parameters = count_parameters(model)
-
     if config.local_rank == 0:
         print(f"    -> {len(train_dataset)} training images")
         print(f"    -> {len(val_dataset)} validation images")
-        print(f"    -> {n_parameters} trainable parameters\n")
+        print(f"    -> {n_parameters} trainable parameters")
+        if model_distilled is not None:
+            dist_parameters = count_parameters(model_distilled)
+            print(f"    -> {dist_parameters} distilled parameters\n")
+        else:
+            print("")
 
     pred_val = fit(
         model,
         model_teacher,
+        model_distilled,
         train_dataset,
         val_dataset,
         config.data_config,
@@ -187,6 +235,8 @@ def k_fold(config, df, df_extra=None, log_folder=None, run=None):
     oof_ = np.stack(oof_).T
     for i in range(len(oof_)):
         df[f"pred_{i}"] = oof_[i]
+        
+#     df['lens'] = np.load('../output/lens.npy')
 
     pred_oof = np.zeros((len(df), config.num_classes))
     for fold in range(config.k):
@@ -202,8 +252,10 @@ def k_fold(config, df, df_extra=None, log_folder=None, run=None):
             train_idx = list(df[df["fold"] != fold].index)
             val_idx = list(df[df["fold"] == fold].index)
 
-            df_train = df.iloc[train_idx].copy().reset_index(drop=True)
-            df_val = df.iloc[val_idx].copy().reset_index(drop=True)
+            df_train = df.iloc[train_idx].reset_index(drop=True)
+            df_val = df.iloc[val_idx].reset_index(drop=True)
+            
+#             df_train = df_train[df_train['lens'] <= 5].reset_index(drop=True)
 
             if df_extra is not None:
                 df_train = pd.concat([df_train, df_extra], ignore_index=True)
@@ -212,7 +264,7 @@ def k_fold(config, df, df_extra=None, log_folder=None, run=None):
             #     df_train[f'pred_{fold}'] > np.percentile(df_train[f'pred_{fold}'], 10)
             # ].reset_index(drop=True)
 
-            # df_train = df_train[df_train['participant_id'] != 29302]
+#             df_train = df_train[df_train['participant_id'] != 29302].reset_index(drop=True)
             # two_hands = np.concatenate([
             #     np.load('../output/two_hands_others.npy'),
             #     np.load('../output/two_hands_29302.npy')

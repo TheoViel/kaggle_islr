@@ -1,7 +1,7 @@
 import gc
 import time
 import torch
-# import numpy as np
+import numpy as np
 # from tqdm import tqdm
 from transformers import get_linear_schedule_with_warmup
 
@@ -11,6 +11,23 @@ from training.optim import define_optimizer, update_teacher_params, AWP
 from model_zoo.utils import modify_drop
 from utils.metrics import accuracy
 from utils.torch import sync_across_gpus, save_model_weights
+
+
+class Mixup(torch.nn.Module):
+    def __init__(self, alpha=0.4):
+        super(Mixup, self).__init__()
+        self.beta_distribution = torch.distributions.Beta(alpha, alpha)
+        self.num_classes = 250
+
+    def forward(self, y):
+        bs = y.shape[0]
+        perm = torch.randperm(bs)
+        coeffs = self.beta_distribution.rsample(torch.Size((bs,))).to(y.device)
+
+        y = torch.zeros(y.size(0), self.num_classes).to(y.device).scatter(1, y.view(-1, 1).long(), 1)
+        y = coeffs.view(-1, 1) * y + (1 - coeffs.view(-1, 1)) * y[perm]
+
+        return perm, coeffs, y
 
 
 def evaluate(
@@ -51,7 +68,7 @@ def evaluate(
         num_classes_aux = model.num_classes_aux
 
     with torch.no_grad():
-        for data, _ in val_loader:
+        for data, _, _ in val_loader:
             for k in data.keys():
                 data[k] = data[k].cuda()
 
@@ -102,6 +119,7 @@ def evaluate(
 def fit(
     model,
     model_teacher,
+    model_distilled,
     train_dataset,
     val_dataset,
     data_config,
@@ -150,6 +168,15 @@ def fit(
         betas=optimizer_config["betas"],
         weight_decay=optimizer_config["weight_decay"],
     )
+    
+    if model_distilled is not None:
+        optimizer_distilled = define_optimizer(
+            model_distilled,
+            optimizer_config["name"],
+            lr=optimizer_config["lr"],
+            betas=optimizer_config["betas"],
+            weight_decay=optimizer_config["weight_decay"],
+        )
 
     train_loader, val_loader = define_loaders(
         train_dataset,
@@ -168,6 +195,10 @@ def fit(
     scheduler = get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps, num_training_steps
     )
+    if model_distilled is not None:
+        scheduler_distilled = get_linear_schedule_with_warmup(
+            optimizer_distilled, num_warmup_steps, num_training_steps
+        )
 
     loss_fct = SignLoss(loss_config)
 
@@ -182,9 +213,11 @@ def fit(
 #             adv_eps=optimizer_config['awp_eps'],
 #         )
 
+    mix = Mixup(alpha=data_config['mix_alpha'])
+
     step = 1
-    acc = 0
-    acc_teach = 0
+    acc, acc_teach, acc_dist = 0, 0, 0
+    preds_teach, preds_dist = None, None
     avg_losses = []
     start_time = time.time()
     for epoch in range(1, epochs + 1):
@@ -222,18 +255,27 @@ def fit(
             except AttributeError:
                 train_loader.batch_sampler.sampler.set_epoch(epoch)
 
-        for data, data_teacher in train_loader:
+        for data, data_teacher, data_distilled in train_loader:
             for k in data.keys():
                 data[k] = data[k].cuda()
                 data_teacher[k] = data_teacher[k].cuda()
+                if model_distilled is not None:
+                    data_distilled[k] = data_distilled[k].cuda()
+                    
+            perm, coefs = None, None
+            y = data["target"]
+            if mix is not None and np.random.random() < (1 - epoch / (0.9 * epochs)) * data_config['mix_proba']:
+#                 if epoch >= epochs * optimizer_config["warmup_prop"]:
+                perm, coefs, y = mix(data['target'])
 
             with torch.cuda.amp.autocast(enabled=use_fp16):
-                y_pred, y_pred_aux = model(data)
+                y_pred, y_pred_aux = model(data, perm=perm, coefs=coefs)
                     
                 with torch.no_grad():
-                    y_pred_teacher, y_pred_aux_teacher = model_teacher(data_teacher)
+                    y_pred_teacher, y_pred_aux_teacher = model_teacher(data_teacher, perm=perm, coefs=coefs)
 
-                loss = loss_fct(y_pred, y_pred_aux, data["target"], 0)
+                loss = loss_fct(y_pred, y_pred_aux, y, 0)
+
                 loss += consistency_loss(
                     y_pred,
                     y_pred_teacher,
@@ -241,32 +283,46 @@ def fit(
                     student_pred_aux=y_pred_aux,
                     teacher_pred_aux=y_pred_aux_teacher,
                 )
+                
+                if model_distilled is not None:
+                    y_pred_dist, y_pred_aux_dist = model_distilled(data_distilled, perm=perm, coefs=coefs)
+                    loss_dist = loss_fct(y_pred_dist, y_pred_aux_dist, y, 0) 
+                    loss_dist += consistency_loss(y_pred_dist, y_pred_teacher, step)
 
             scaler.scale(loss).backward()
+            if model_distilled is not None:
+                scaler.scale(loss_dist).backward()
+                
             avg_losses.append(loss.detach())
-            
+
 #             if (
 #                 optimizer_config['use_awp'] and
 #                 (step % optimizer_config['awp_period']) == 0 and
 #                 step > optimizer_config["awp_start_step"]
 #             ):
 #                 awp.perturb()
-                
 #             if optimizer_config['use_awp']:
 #                 awp.restore()
 
             scaler.unscale_(optimizer)
+            if model_distilled is not None:
+                scaler.unscale_(optimizer_distilled)
+            
             if optimizer_config["max_grad_norm"]:
-                torch.nn.utils.clip_grad_norm_(
-                    model.parameters(),
-                    optimizer_config["max_grad_norm"],
-                    # error_if_nonfinite=False,
-                )
+                torch.nn.utils.clip_grad_norm_(model.parameters(), optimizer_config["max_grad_norm"])
+                if model_distilled is not None:
+                    torch.nn.utils.clip_grad_norm_(model_distilled.parameters(), optimizer_config["max_grad_norm"])
+
             scaler.step(optimizer)
+            if model_distilled is not None:
+                scaler.step(optimizer_distilled)
+
             scale = scaler.get_scale()
             scaler.update()
 
             model.zero_grad(set_to_none=True)
+            if model_distilled is not None:
+                model_distilled.zero_grad(set_to_none=True)
 
             if distributed:
                 torch.cuda.synchronize()
@@ -275,6 +331,8 @@ def fit(
 
             if scale == scaler.get_scale():
                 scheduler.step()
+                if model_distilled is not None:
+                    scheduler_distilled.step()
             step += 1
 
             if (step % verbose_eval) == 0 or step - 1 >= epochs * len(train_loader):
@@ -308,8 +366,20 @@ def fit(
                         world_size=world_size,
                         local_rank=local_rank,
                     )
+                    if model_distilled is not None:
+                        preds_dist, _, _ = evaluate(
+                            model_distilled,
+                            val_loader,
+                            loss_config,
+                            loss_fct,
+                            use_fp16=use_fp16,
+                            distributed=distributed,
+                            world_size=world_size,
+                            local_rank=local_rank,
+                        )
                 else:
                     preds_teach = None
+                    preds_dist = None
 
                 if local_rank == 0:
                     preds = preds[: len(val_dataset)]
@@ -318,6 +388,9 @@ def fit(
                     if preds_teach is not None:
                         preds_teach = preds_teach[: len(val_dataset)]
                         acc_teach = accuracy(val_dataset.targets, preds_teach.argmax(-1))
+                    if preds_dist is not None:
+                        preds_dist = preds_dist[: len(val_dataset)]
+                        acc_dist = accuracy(val_dataset.targets, preds_dist.argmax(-1))
 
                     dt = time.time() - start_time
                     lr = scheduler.get_last_lr()[0]
@@ -328,6 +401,7 @@ def fit(
                     s = s + f"\t val_loss={avg_val_loss:.3f}" if avg_val_loss else s
                     s = s + f"    acc={acc:.3f}" if acc else s
                     s = s + f"    acc_teach={acc_teach:.3f}" if acc_teach else s
+                    s = s + f"    acc_dist={acc_dist:.3f}" if acc_dist else s
 
                     print(s)
 
@@ -339,6 +413,8 @@ def fit(
                     run[f"fold_{fold}/val/acc"].log(acc, step=step_)
                     if acc_teach:
                         run[f"fold_{fold}/val/acc_teach"].log(acc_teach, step=step_)
+                    if acc_dist:
+                        run[f"fold_{fold}/val/acc_dist"].log(acc_dist, step=step_)
 
                 start_time = time.time()
                 avg_losses = []
@@ -356,10 +432,17 @@ def fit(
                 )
                 save_model_weights(
                     model_teacher,
-                    f"{model_teacher.name.split('/')[-1]}_teacher_{fold}_{epoch}.pt",
+                    f"{name.split('/')[-1]}_teacher_{fold}_{epoch}.pt",
                     cp_folder=log_folder,
                     verbose=0,
                 )
+                if model_distilled is not None:
+                    save_model_weights(
+                        model_distilled.module if distributed else model_distilled,
+                        f"{name.split('/')[-1]}_distilled_{fold}_{epoch}.pt",
+                        cp_folder=log_folder,
+                        verbose=0,
+                    )
 
     if (log_folder is not None) and (local_rank == 0):
         save_model_weights(
@@ -368,6 +451,9 @@ def fit(
             cp_folder=log_folder,
             verbose=0
         )
+        if model_distilled is not None:
+            name = f"{model_distilled.module.name.split('/')[-1]}_distilled_{fold}.pt"
+            save_model_weights(model_distilled, name, cp_folder=log_folder, verbose=0)
 
     del (train_loader, val_loader, optimizer)
     torch.cuda.empty_cache()

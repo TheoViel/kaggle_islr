@@ -34,7 +34,7 @@ def predict(model, dataset, loss_config, batch_size=64, device="cuda", use_fp16=
     )
 
     with torch.no_grad():
-        for data, _ in tqdm(loader):
+        for data, _, _ in tqdm(loader):
             for k in data.keys():
                 data[k] = data[k].cuda()
 

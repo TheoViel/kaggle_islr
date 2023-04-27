@@ -1,15 +1,16 @@
 import torch
+import numpy as np
 import torch.nn as nn
+
+from torch.nn import LayerNorm
 from transformers import AutoConfig
 from transformers.models.deberta_v2.modeling_deberta_v2 import DebertaV2Encoder
-from torch.nn import LayerNorm
 from transformers.models.deberta_v2.modeling_deberta_v2 import StableDropout
-# from model_zoo.mha import TransformerBlock
-# from model_zoo.gcn import DecoupledGCN
+
 from model_zoo.resnet import ResNet, Bottleneck
-# from model_zoo.heng import HCKTransfo, positional_encoding
 from model_zoo.utils import (
     add_shift,
+    get_edge_features,
     # compute_finger_face_distance,
     # compute_hand_features,
 )
@@ -194,7 +195,7 @@ class SignMLPCNN(nn.Module):
 
         x_type = self.type_norm(self.type_embed(x["type"]))
         x_landmark = self.landmark_norm(self.landmark_embed(x["landmark"]))
-        x_pos = torch.stack([x["x"], x["y"], x["z"]], -1)
+        x_pos = torch.stack([x["x"], x["y"], x["z"]], -1)        
 
         x_pos = add_shift(x_pos)
         x_pos = self.pos_dense(x_pos)
@@ -301,6 +302,7 @@ class SignMLPBert3(nn.Module):
         self.num_classes = num_classes
         self.num_classes_aux = num_classes_aux
         self.transfo_heads = transfo_heads
+        self.transfo_layers = transfo_layers
         self.multi_sample_dropout = False
         self.use_cnn = True
         self.max_len = max_len
@@ -357,6 +359,22 @@ class SignMLPBert3(nn.Module):
             nn.Mish(),
         )
 
+#         self.left_hand_edge_dense = nn.Linear(3, embed_dim)
+#         self.left_hand_edge_mlp = nn.Sequential(
+#             nn.Linear(embed_dim * 15, dense_dim),
+#             nn.BatchNorm1d(dense_dim),
+#             nn.Dropout(p=drop_mlp),
+#             nn.Mish(),
+#         )
+
+#         self.right_hand_edge_dense = nn.Linear(3, embed_dim)
+#         self.right_hand_edge_mlp = nn.Sequential(
+#             nn.Linear(embed_dim * 15, dense_dim),
+#             nn.BatchNorm1d(dense_dim),
+#             nn.Dropout(p=drop_mlp),
+#             nn.Mish(),
+#         )
+
         transfo_dim_ = transfo_dim
         if transfo_layers == 3:  # 512, 768, 1024 / 768
             delta = 256
@@ -399,8 +417,10 @@ class SignMLPBert3(nn.Module):
             if transfo_layers >= 3 and transfo_dim_ == 1024:
                 config.output_size += delta
 
-            config.attention_probs_dropout_prob *= 2
-            config.hidden_dropout_prob *= 2
+            if delta > 0:
+                config.attention_probs_dropout_prob *= 2
+                config.hidden_dropout_prob *= 2
+
             self.frame_transformer_2 = DebertaV2Encoder(config)
             self.frame_transformer_2.layer[0].output = DebertaV2Output(config)
 
@@ -418,10 +438,10 @@ class SignMLPBert3(nn.Module):
 
         self.logits = nn.Linear(config.output_size, num_classes)
         if num_classes_aux:
-            self.logits_aux = nn.Linear(transfo_dim, num_classes_aux)
+            self.logits_aux = nn.Linear(config.output_size, num_classes_aux)
             
 
-    def forward(self, x, return_fts=False):
+    def forward(self, x, perm=None, coefs=None):
         """
         Forward function.
 
@@ -481,11 +501,21 @@ class SignMLPBert3(nn.Module):
 
         face_fts = self.face_mlp(face_fts)
 
-        fts = fts.view(bs * n_frames, -1)
+#         # Edge fts
+#         right_hand_edge_fts = get_edge_features(x, mode="right")
+#         right_hand_edge_fts = self.right_hand_edge_dense(right_hand_edge_fts)
+#         right_hand_edge_fts = self.right_hand_edge_mlp(right_hand_edge_fts.view(bs * n_frames, -1))
 
+#         left_hand_edge_fts = get_edge_features(x, mode="left")
+#         left_hand_edge_fts = self.left_hand_edge_dense(left_hand_edge_fts)
+#         left_hand_edge_fts = self.left_hand_edge_mlp(left_hand_edge_fts.view(bs * n_frames, -1))
+    
+#         hand_edge_fts = torch.stack([left_hand_edge_fts, right_hand_edge_fts], -1).amax(-1)
+
+        fts = fts.view(bs * n_frames, -1)
         fts = self.full_mlp(fts)
 
-        fts = torch.cat([fts, hand_fts, lips_fts, face_fts], -1)  # dists_fts
+        fts = torch.cat([fts, hand_fts, lips_fts, face_fts], -1)  # dists_fts, hand_edge_fts
 
         fts = self.landmark_mlp(fts)
         fts = fts.view(bs, n_frames, -1)
@@ -493,9 +523,25 @@ class SignMLPBert3(nn.Module):
         mask = x["mask"][:, :, 0][:, :n_frames]
         fts *= mask.unsqueeze(-1)  # probably useless but kept for now
 
+        where = np.random.randint(1, self.transfo_layers + 1) if perm is not None else 0  # Manifold Mixup
+
+        if where == 1:
+            fts = coefs.view(-1, 1, 1) * fts + (1 - coefs.view(-1, 1, 1)) * fts[perm]
+            mask = ((mask + mask[perm]) > 0).float()
+
         fts = self.frame_transformer_1(fts, mask).last_hidden_state
+        
+        if where == 2:
+            fts = coefs.view(-1, 1, 1) * fts + (1 - coefs.view(-1, 1, 1)) * fts[perm]
+            mask = ((mask + mask[perm]) > 0).float()
+
         if self.frame_transformer_2 is not None:
             fts = self.frame_transformer_2(fts, mask).last_hidden_state
+            
+        if where == 3:
+            fts = coefs.view(-1, 1, 1) * fts + (1 - coefs.view(-1, 1, 1)) * fts[perm]
+            mask = ((mask + mask[perm]) > 0).float()
+
         if self.frame_transformer_3 is not None:
             fts = self.frame_transformer_3(fts, mask).last_hidden_state
 

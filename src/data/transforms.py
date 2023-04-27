@@ -40,12 +40,16 @@ for k, v in FLIP_MAP.items():
 def flip(data, flip_array=FLIP_ARRAY, p=1):
     if np.random.random() > p:
         return data
+    
+#     if data.get('target', [-1])[0] in [25, 172, 163, 36, 129, 95, 218, 5, 126, 41, 166, 9, 69, 141, 125, 19, 86, 179, 203, 21, 222, 188, 64, 243, 146, 11]:
+# #         print('noflip')
+#         return data
 
     flip_array_ = np.arange(len(data["x"].T))
     flip_array = flip_array[: len(flip_array_)]
     flip_array_[: len(flip_array)] = flip_array
 
-    data["x"] = -data["x"]
+    data["x"] = - data["x"]
     for k in ["x", "y", "z"]:
         data[k] = data[k].T[flip_array_].T
 
@@ -133,6 +137,7 @@ def normalize(data):
     return data
 
 
+
 def normalize_face(data):
     embed = data["type"][0]
     for k in ["x", "y", "z"]:
@@ -151,6 +156,43 @@ def normalize_face(data):
     return data
 
 
+POINTS_N = [81, 82, 93, 94, 95, 96, 97, 98, 99, 42, 53, 52, 56, 59, 54, 57, 55, 58, 47, 44, 43, 48, 51, 45, 49, 46, 50, 47]
+
+
+def normalize_2(data, flatten=True):
+    for k in ["x", "y", "z"]:
+        x = data[k].T[POINTS_N].T
+#         print(x.shape)
+        
+        if flatten:
+            x = x.flatten()
+
+        mean = x.mean(-1, keepdims=True)
+        std = x.std(-1, unbiased=False, keepdims=True)
+
+        data[k] = torch.where(
+            data[k] != 0,
+            (data[k] - mean) / (std + 1e-6),
+            0,
+        )
+    return data
+
+
+def normalize_aug(data, p=0.5):
+    if np.random.random() > p:
+        return data
+
+    choice = np.random.randint(1, 4)
+#     print(choice)
+    if choice == 1:
+        return normalize(data)
+    elif choice == 2:
+        return normalize_2(data, flatten=True)
+    else:
+        return normalize_2(data, flatten=False)
+        
+    
+    
 def scale(data, factor=0.3, p=0.5):
     if np.random.random() > p:
         return data
@@ -215,7 +257,7 @@ def add_noise(data, snr=50, p=0.5):
     if np.random.random() > p:
         return data
 
-    for k in ["x", "y", "z"]:
+    for k in ["x", "y"]: # , "z"]:
         noise = torch.from_numpy(
             np.random.normal(scale=data[k].std() / snr, size=data[k].shape)
         )
@@ -310,10 +352,12 @@ def augment(data, aug_strength=0):
         data = rotate(data, p=0.5)
         data = crop(data, p=0.5)
         data = scale(data, p=0.25)
+        
+#         data = normalize_aug(data, p=0.5)
 
-    #         data = add_noise(data, snr=50, p=0.5)
-    #         data = drop_frames(data, prop=0.1, p=0.25)
-    #         data = dropout(data, drop_p=0.1, p=0.25)
+#         data = add_noise(data, snr=50, p=0.5)
+#         data = drop_frames(data, prop=0.1, p=0.25)
+#         data = dropout(data, drop_p=0.05, p=0.25)
 
     if aug_strength == 2:
         data = interpolate(data, p=0.5)
@@ -321,11 +365,16 @@ def augment(data, aug_strength=0):
         data = rotate(data, p=0.5)
         data = scale(data, p=0.25)
         data = crop(data, p=0.25)
+        
+#         data = normalize_aug(data, p=0.5)
+
+#         data = add_noise(data, snr=100, p=0.25)
+#         data = dropout(data, drop_p=0.05, p=1)
 
     elif aug_strength == 1:
-        #         data = interpolate(data, p=0.5)
+
         data = flip(data, p=0.5)
         data = rotate(data, max_angle=1 / 12, p=0.25)
-    #         data = scale(data, p=0.25)
+
 
     return data

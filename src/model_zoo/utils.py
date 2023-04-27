@@ -1,6 +1,58 @@
 import torch
+import numpy as np
 import torch.nn as nn
 from transformers.models.deberta_v2.modeling_deberta_v2 import StableDropout
+
+
+right_hand_edges = np.array([
+    [40, 41],
+    [39, 40],
+    [38, 39],
+    [36, 37],
+    [35, 36],
+    [34, 35],
+    [32, 33],
+    [31, 32],
+    [30, 31],
+    [28, 29],
+    [27, 28],
+    [26, 27],
+    [24, 25],
+    [23, 24],
+    [22, 23],
+])
+left_hand_edges = np.array([
+    [19, 20],
+    [18, 19],
+    [17, 18],
+    [15, 16],
+    [14, 15],
+    [13, 14],
+    [11, 12],
+    [10, 11],
+    [ 9, 10],
+    [ 7,  8],
+    [ 6,  7],
+    [ 5,  6],
+    [ 3,  4],
+    [ 2,  3],
+    [ 1,  2]
+])
+
+def get_edge_features(data, mode="left"):
+    edges = left_hand_edges if mode == "left" else right_hand_edges
+
+    x1 = data['x'].T[edges[:, 0]].T
+    x2 = data['x'].T[edges[:, 1]].T
+    y1 = data['y'].T[edges[:, 0]].T
+    y2 = data['y'].T[edges[:, 1]].T
+
+    x = (x1 + x2) / 2
+    y = (y1 + y2) / 2
+    theta = torch.arctan((y2 - y1) / (x2 - y1 + 1e-6))
+
+    fts = torch.stack([x, y, theta], -1)
+    return fts
 
 
 def modify_drop(model, factor=1):

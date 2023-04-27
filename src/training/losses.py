@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
+from scipy.special import softmax
 
 
 class ConsistencyLoss(nn.Module):
@@ -54,7 +55,7 @@ class SmoothCrossEntropyLoss(nn.Module):
     Cross-entropy loss with label smoothing.
     """
 
-    def __init__(self, eps=0.0):
+    def __init__(self, eps=0.0, use_embed=False, device="cuda"):
         """
         Constructor.
         Args:
@@ -62,6 +63,19 @@ class SmoothCrossEntropyLoss(nn.Module):
         """
         super(SmoothCrossEntropyLoss, self).__init__()
         self.eps = eps
+        
+        if use_embed:
+            embeds = np.load("../input/fasttext_embeds.npy")
+            embeds = embeds / np.sqrt((embeds * embeds).mean(-1, keepdims=True))
+
+            sims = (embeds[None] * embeds[:, None]).sum(-1)
+            T = 50
+            sims /= T
+            sims -= 100000 * np.eye(len(embeds))
+
+            self.sims = torch.from_numpy(softmax(sims, -1)).to(device)
+        else:
+            self.sims = None
 
     def forward(self, inputs, targets):
         """
@@ -72,14 +86,19 @@ class SmoothCrossEntropyLoss(nn.Module):
         Returns:
             torch tensor: Loss values, averaged.
         """
+        y = targets
         if len(targets.size()) == 1:  # to one hot
             targets = torch.zeros_like(inputs).scatter(1, targets.view(-1, 1).long(), 1)
 
         if self.eps > 0:
             n_class = inputs.size(1)
-            targets = targets * (1 - self.eps) + (1 - targets) * self.eps / (
-                n_class - 1
-            )
+            if self.sims is None:
+                targets = targets * (1 - self.eps) + (1 - targets) * self.eps / (
+                    n_class - 1
+                )
+#                 targets = torch.clamp(targets, self.eps / (n_class - 1), 1 - self.eps)
+            else:
+                targets = targets * (1 - self.eps) + (1 - targets)  * self.eps * self.sims[y]
 
         loss = -targets * F.log_softmax(inputs, dim=1)
         loss = loss.sum(-1)
@@ -100,7 +119,9 @@ class SignLoss(nn.Module):
         if config["name"] == "bce":
             self.loss = nn.BCEWithLogitsLoss(reduction="none")
         elif config["name"] == "ce":
-            self.loss = SmoothCrossEntropyLoss(eps=self.eps)
+            self.loss = SmoothCrossEntropyLoss(
+                eps=self.eps, use_embed=config['use_embed'], device=device
+            )
         else:
             raise NotImplementedError
 
@@ -119,8 +140,7 @@ class SignLoss(nn.Module):
             _type_: _description_
         """
         if self.config["name"] in ["ce", "supcon"]:
-            y = y.view(-1).long()
-
+            y = y.squeeze()
         else:
             y = y.float()
             pred = pred.float().view(y.size())

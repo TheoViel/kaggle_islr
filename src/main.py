@@ -126,8 +126,8 @@ class Config:
 
     transfo_layers = 3
     embed_dim = 16
-    dense_dim = 192
-    transfo_dim = 768  # 1024
+    dense_dim = 192  # 192 256
+    transfo_dim = 768  # 768 1024
     transfo_heads = 16
     drop_rate = 0.05
 
@@ -139,12 +139,15 @@ class Config:
         "aux_loss_weight": 0.,
         "activation_aux": "softmax",
         "ousm_k": 3,
+        "use_embed": False,
     }
 
     data_config = {
         "batch_size": 32,
         "val_bs": 1024,
         "use_len_sampler": False,
+        "mix_proba": 0.5,
+        "mix_alpha": 0.4,
     }
 
     optimizer_config = {
@@ -152,7 +155,7 @@ class Config:
         "lr": 3e-4,
         "warmup_prop": 0.25,
         "betas": (0.9, 0.999),
-        "max_grad_norm": 10.0,
+        "max_grad_norm": 10.,
         "weight_decay": 0.4,
 #         # AWP
 #         "use_awp": True,
@@ -163,7 +166,8 @@ class Config:
     }
 
     mt_config = {
-        "ema_decay": 0.97,  # 0.99
+        "distill": False,
+        "ema_decay": 0.97,
         "consistency_weight": 5,
         "rampup_prop": 0.25,
         "aux_loss_weight": 0.,

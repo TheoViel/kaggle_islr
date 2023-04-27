@@ -78,13 +78,25 @@ def kfold_inference_val(
         folds = pd.read_csv(config.folds_file)
         df = df.merge(folds, how="left", on=["patient_id", "image_id"])
 
+    if distilled:
+        if config.transfo_dim == 1024:
+            distill_transfo_dim = 768
+            distill_dense_dim = 192  # 256
+            distill_transfo_layers = 3
+        elif config.transfo_dim == 768:
+            distill_transfo_dim = 512
+            distill_dense_dim = 192
+            distill_transfo_layers = 2
+        else:
+            raise NotImplementedError
+
     model = define_model(
         config.name,
         embed_dim=config.embed_dim,
-        transfo_dim=config.transfo_dim if not distilled else config.transfo_dim - 256,
-        dense_dim=config.dense_dim,
+        transfo_dim=config.transfo_dim if not distilled else distill_transfo_dim,
+        dense_dim=config.dense_dim if not distilled else distill_dense_dim,
         transfo_heads=config.transfo_heads,
-        transfo_layers=config.transfo_layers,
+        transfo_layers=config.transfo_layers if not distilled else distill_transfo_layers,
         drop_rate=config.drop_rate,
         num_classes=config.num_classes,
         num_classes_aux=config.num_classes_aux,
@@ -101,6 +113,8 @@ def kfold_inference_val(
         if config.model_soup and n_soup > 1:
             if use_mt:
                 weights = [exp_folder + f"{config.name}_teacher_{fold}_{ep}.pt" for ep in range(config.epochs - n_soup, config.epochs + 1)]
+            elif distilled:
+                weights = [exp_folder + f"{config.name}_distilled_{fold}_{ep}.pt" for ep in range(config.epochs - n_soup, config.epochs + 1)]
             else:
                 weights = [exp_folder + f"{config.name}_{fold}_{ep}.pt" for ep in range(config.epochs - n_soup, config.epochs + 1)]
             
@@ -116,6 +130,7 @@ def kfold_inference_val(
                 weights = exp_folder + f"{config.name}_distilled_{fold}.pt"
             else:
                 weights = exp_folder + f"{config.name}_{fold}.pt"
+#             print(weights)
             model = load_model_weights(model, weights, verbose=1)
 
 #         import torch.nn.utils.prune as prune

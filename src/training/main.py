@@ -11,7 +11,7 @@ from model_zoo.models import define_model
 
 from data.dataset import SignDataset
 
-from utils.torch import seed_everything, count_parameters, save_model_weights
+from utils.torch import seed_everything, count_parameters, save_model_weights, load_model_weights
 from utils.metrics import accuracy
 
 
@@ -94,7 +94,12 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
         n_landmarks=config.n_landmarks,
         max_len=config.max_len,
         verbose=(config.local_rank == 0),
-    ).cuda()
+    ).cuda().eval()
+    model_teacher = load_model_weights(
+        model_teacher,
+        f'../logs/2023-04-25/66/{config.name}_teacher_{fold}.pt',
+        verbose=(config.local_rank == 0)
+    )
 
     model_distilled = None
     if config.mt_config['distill']:

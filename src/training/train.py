@@ -274,15 +274,15 @@ def fit(
                 with torch.no_grad():
                     y_pred_teacher, y_pred_aux_teacher = model_teacher(data_teacher, perm=perm, coefs=coefs)
 
-                loss = loss_fct(y_pred, y_pred_aux, y, 0)
+                loss = loss_fct(y_pred, y_pred_aux, y, y_pred_teacher.softmax(-1).detach(), alpha=epoch/epochs)
 
-                loss += consistency_loss(
-                    y_pred,
-                    y_pred_teacher,
-                    step=step,
-                    student_pred_aux=y_pred_aux,
-                    teacher_pred_aux=y_pred_aux_teacher,
-                )
+#                 loss += consistency_loss(
+#                     y_pred,
+#                     y_pred_teacher,
+#                     step=step,
+#                     student_pred_aux=y_pred_aux,
+#                     teacher_pred_aux=y_pred_aux_teacher,
+#                 )
                 
                 if model_distilled is not None:
                     y_pred_dist, y_pred_aux_dist = model_distilled(data_distilled, perm=perm, coefs=coefs)
@@ -327,7 +327,7 @@ def fit(
             if distributed:
                 torch.cuda.synchronize()
 
-            update_teacher_params(model, model_teacher, mt_config["ema_decay"], step)
+#             update_teacher_params(model, model_teacher, mt_config["ema_decay"], step)
 
             if scale == scaler.get_scale():
                 scheduler.step()
@@ -419,7 +419,7 @@ def fit(
                 start_time = time.time()
                 avg_losses = []
                 model.train()
-                model_teacher.train()
+                model_teacher.eval()
 
         if (log_folder is not None) and (local_rank == 0) and model_soup:
             name = model.module.name if distributed else model.name
@@ -430,12 +430,12 @@ def fit(
                     cp_folder=log_folder,
                     verbose=0,
                 )
-                save_model_weights(
-                    model_teacher,
-                    f"{name.split('/')[-1]}_teacher_{fold}_{epoch}.pt",
-                    cp_folder=log_folder,
-                    verbose=0,
-                )
+#                 save_model_weights(
+#                     model_teacher,
+#                     f"{name.split('/')[-1]}_teacher_{fold}_{epoch}.pt",
+#                     cp_folder=log_folder,
+#                     verbose=0,
+#                 )
                 if model_distilled is not None:
                     save_model_weights(
                         model_distilled.module if distributed else model_distilled,
@@ -445,12 +445,12 @@ def fit(
                     )
 
     if (log_folder is not None) and (local_rank == 0):
-        save_model_weights(
-            model_teacher,
-            f"{model_teacher.name.split('/')[-1]}_teacher_{fold}.pt",
-            cp_folder=log_folder,
-            verbose=0
-        )
+#         save_model_weights(
+#             model_teacher,
+#             f"{model_teacher.name.split('/')[-1]}_teacher_{fold}.pt",
+#             cp_folder=log_folder,
+#             verbose=0
+#         )
         if model_distilled is not None:
             name = f"{model_distilled.module.name.split('/')[-1]}_distilled_{fold}.pt"
             save_model_weights(model_distilled, name, cp_folder=log_folder, verbose=0)

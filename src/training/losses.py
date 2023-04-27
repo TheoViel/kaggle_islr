@@ -77,7 +77,7 @@ class SmoothCrossEntropyLoss(nn.Module):
         else:
             self.sims = None
 
-    def forward(self, inputs, targets):
+    def forward(self, inputs, targets, targets_aux=None, alpha=1):
         """
         Computes the loss.
         Args:
@@ -99,6 +99,9 @@ class SmoothCrossEntropyLoss(nn.Module):
 #                 targets = torch.clamp(targets, self.eps / (n_class - 1), 1 - self.eps)
             else:
                 targets = targets * (1 - self.eps) + (1 - targets)  * self.eps * self.sims[y]
+
+        if targets_aux is not None:
+            targets = alpha * targets + (1 - alpha) * targets_aux
 
         loss = -targets * F.log_softmax(inputs, dim=1)
         loss = loss.sum(-1)
@@ -150,7 +153,7 @@ class SignLoss(nn.Module):
 
         return pred, y
 
-    def forward(self, pred, pred_aux, y, y_aux):
+    def forward(self, pred, pred_aux, y, y_aux, alpha=1):
         """
         Computes the loss.
 
@@ -165,7 +168,7 @@ class SignLoss(nn.Module):
         """
         pred, y = self.prepare(pred, y)
 
-        loss = self.loss(pred, y)
+        loss = self.loss(pred, y, y_aux, alpha=alpha)
 
         if self.ousm_k:
             _, idxs = loss.topk(y.size(0) - self.ousm_k, largest=False)

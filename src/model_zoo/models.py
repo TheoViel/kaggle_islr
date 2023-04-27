@@ -246,11 +246,6 @@ class SignMLPCNN(nn.Module):
         return logits, torch.zeros(1)
 
 
-class Identity(nn.Module):
-    def forward(self, x, y=None):
-        return x
-
-
 class DebertaV2Output(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -377,7 +372,7 @@ class SignMLPBert3(nn.Module):
 
         transfo_dim_ = transfo_dim
         if transfo_layers == 3:  # 512, 768, 1024 / 768
-            delta = 256
+            delta = min(256, transfo_dim - 512)
             transfo_dim = 512
         else:  # 768, 768 
             delta = 0

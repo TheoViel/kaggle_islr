@@ -246,11 +246,6 @@ class SignMLPCNN(nn.Module):
         return logits, torch.zeros(1)
 
 
-class Identity(nn.Module):
-    def forward(self, x, y=None):
-        return x
-
-
 class DebertaV2Output(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -376,9 +371,14 @@ class SignMLPBert3(nn.Module):
 #         )
 
         transfo_dim_ = transfo_dim
+        
         if transfo_layers == 3:  # 512, 768, 1024 / 768
-            delta = 256
-            transfo_dim = 512
+            if transfo_dim <= 1024:
+                delta = min(256, transfo_dim - 512)
+                transfo_dim = 512
+            else:  # BIG Models
+                delta = (transfo_dim - 1024) // 2
+                transfo_dim = 1024
         else:  # 768, 768 
             delta = 0
 
@@ -414,7 +414,7 @@ class SignMLPBert3(nn.Module):
             config.hidden_size += delta
             config.intermediate_size += delta
             
-            if transfo_layers >= 3 and transfo_dim_ == 1024:
+            if transfo_layers >= 3 and transfo_dim_ >= 1024:
                 config.output_size += delta
 
             if delta > 0:
@@ -426,11 +426,12 @@ class SignMLPBert3(nn.Module):
 
         self.frame_transformer_3 = None
         if transfo_layers >= 3:
-            if transfo_dim_ == 1024:
+            if transfo_dim_ >= 1024:
                 config.hidden_size += delta
                 config.intermediate_size += delta
                 config.attention_probs_dropout_prob *= 2
                 config.hidden_dropout_prob *= 2
+                config.output_size += delta
 
             config.output_size -= delta
             self.frame_transformer_3 = DebertaV2Encoder(config)
@@ -541,6 +542,8 @@ class SignMLPBert3(nn.Module):
         if where == 3:
             fts = coefs.view(-1, 1, 1) * fts + (1 - coefs.view(-1, 1, 1)) * fts[perm]
             mask = ((mask + mask[perm]) > 0).float()
+        
+#         print(fts.size())
 
         if self.frame_transformer_3 is not None:
             fts = self.frame_transformer_3(fts, mask).last_hidden_state

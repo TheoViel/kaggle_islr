@@ -1,4 +1,5 @@
 import json
+import numpy as np
 import pandas as pd
 
 from params import DATA_PATH
@@ -37,6 +38,8 @@ def prepare_data(data_path="../input/", processed_folder=""):
         + df["sequence_id"].astype(str)
         + ".npy"
     )
+    
+    df['len'] = np.load('../output/raw_lens.npy')
 
     return df
 

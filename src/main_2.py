@@ -106,7 +106,7 @@ class Config:
 
     # Data
     processed_folder = "torch_12/"
-    max_len = 25
+    max_len = 25  # 25, 80
     resize_mode = "pad"
     aug_strength = 3
     use_extra_data = False

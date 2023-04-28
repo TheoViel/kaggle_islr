@@ -79,16 +79,14 @@ def kfold_inference_val(
         df = df.merge(folds, how="left", on=["patient_id", "image_id"])
 
     if distilled:
-        if config.transfo_dim == 1024:
-            distill_transfo_dim = 768
+        try:
+            distill_transfo_dim = config.mt_config['distill_transfo_dim']
+            distill_dense_dim = config.mt_config['distill_dense_dim']
+            distill_transfo_layers = config.mt_config['distill_transfo_layers']
+        except KeyError:
+            distill_transfo_dim = 768  # 512 / 768
             distill_dense_dim = 192  # 256
             distill_transfo_layers = 3
-        elif config.transfo_dim == 768:
-            distill_transfo_dim = 512
-            distill_dense_dim = 192
-            distill_transfo_layers = 2
-        else:
-            raise NotImplementedError
 
     model = define_model(
         config.name,
@@ -211,10 +209,13 @@ def kfold_inference_val(
     print(f"\n\n -> CV Accuracy : {acc:.4f}")
     if save:
         if distilled:
-            np.save(exp_folder + "pred_oof_dist.npy", pred_oof)
+            name = "pred_oof_dist"
         elif use_mt:
-            np.save(exp_folder + "pred_oof_mt.npy", pred_oof)
+            name = "pred_oof_mt"
         else:
-            np.save(exp_folder + "pred_oof_inf.npy", pred_oof)
+            name = "pred_oof_inf"
+        if n_soup > 1:
+            name += "_soup"
+        np.save(exp_folder + f"{name}.npy", pred_oof)
         
     return pred_oof

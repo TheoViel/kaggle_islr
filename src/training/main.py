@@ -98,25 +98,28 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
 
     model_distilled = None
     if config.mt_config['distill']:
-        if config.transfo_dim == 1024:
-            distill_transfo_dim = 768
-            distill_dense_dim = 192  # 256
-            distill_transfo_layers = 3
-        elif config.transfo_dim == 768:
-            distill_transfo_dim = 512
-            distill_dense_dim = 192
-            distill_transfo_layers = 2
-        else:
-            raise NotImplementedError
+#         if config.transfo_dim == 1024:
+#             distill_transfo_dim = 576  # 768
+#             distill_dense_dim = 192
+#             distill_transfo_layers = 3
+#         elif config.transfo_dim == 768:
+#             distill_transfo_dim = 576  # 512
+#             distill_dense_dim = 192
+#             distill_transfo_layers = 3  # 2
+#         else:
+        distill_transfo_dim = 576  # 768
+        distill_dense_dim = 192
+        distill_transfo_layers = 3
+#             raise NotImplementedError
 
         model_distilled = define_model(
             config.name,
             pretrained_weights=pretrained_weights,
             embed_dim=config.embed_dim,
-            transfo_dim=distill_transfo_dim,
-            dense_dim=distill_dense_dim,
+            transfo_dim=config.mt_config['distill_transfo_dim'],
+            dense_dim=config.mt_config['distill_dense_dim'],
             transfo_heads=config.transfo_heads,
-            transfo_layers=distill_transfo_layers,
+            transfo_layers=config.mt_config['distill_transfo_layers'],
             drop_rate=config.drop_rate,
             num_classes=config.num_classes,
             num_classes_aux=config.num_classes_aux,

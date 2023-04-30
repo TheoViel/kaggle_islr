@@ -105,8 +105,8 @@ class Config:
     save_weights = True
 
     # Data
-    processed_folder = "torch_12/"
-    max_len = 25  # 25, 80
+    processed_folder = "torch_19/"
+    max_len = 40  # 25, 80
     resize_mode = "pad"
     aug_strength = 3
     use_extra_data = False
@@ -126,8 +126,8 @@ class Config:
 
     transfo_layers = 3
     embed_dim = 16
-    dense_dim = 256  # 192 256
-    transfo_dim = 1024  # 768 1024
+    dense_dim = 256  # 192 256 512
+    transfo_dim = 1024 + 256 # 768 1024
     transfo_heads = 16
     drop_rate = 0.05
 
@@ -171,6 +171,9 @@ class Config:
         "consistency_weight": 5,
         "rampup_prop": 0.25,
         "aux_loss_weight": 0.,
+        "distill_transfo_dim": 704,  # 576
+        "distill_dense_dim": 192,
+        "distill_transfo_layers": 3,
     }
 
     epochs = 100

@@ -84,7 +84,7 @@ def kfold_inference_val(
             distill_dense_dim = config.mt_config['distill_dense_dim']
             distill_transfo_layers = config.mt_config['distill_transfo_layers']
         except KeyError:
-            distill_transfo_dim = 768  # 512 / 768
+            distill_transfo_dim = 576  # 512 / 768
             distill_dense_dim = 192  # 256
             distill_transfo_layers = 3
 

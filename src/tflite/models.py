@@ -72,7 +72,7 @@ class Model(nn.Module):
         drop_rate=0,
         n_landmarks=100,
         max_len=50,
-        reduce_last=False,
+        normalize=True
     ):
         """
         Constructor.
@@ -87,13 +87,13 @@ class Model(nn.Module):
         self.num_classes = num_classes
         self.num_classes_aux = 0
         self.transfo_heads = transfo_heads
+        self.normalize = normalize
 
         self.type_embed = nn.Embedding(9, embed_dim, padding_idx=0)
         self.landmark_embed = nn.Embedding(101, embed_dim, padding_idx=0)
         self.type_norm = nn.LayerNorm(embed_dim)
         self.landmark_norm = nn.LayerNorm(embed_dim)
 
-#         self.pos_dense = nn.Linear(9, embed_dim)
         self.pos_cnn = nn.Sequential(
             nn.Conv1d(3, 8, kernel_size=5, padding=2, bias=False),
             nn.Conv1d(8, 16, kernel_size=5, padding=2, bias=False),
@@ -194,7 +194,6 @@ class Model(nn.Module):
                 config.attention_probs_dropout_prob *= 2
                 config.hidden_dropout_prob *= 2
                 
-#             if reduce_last:
             config.output_size -= delta
 
             self.frame_transformer_3 = DebertaV2Encoder(config)
@@ -271,18 +270,31 @@ class Model(nn.Module):
         n_fts = fts.size(-1)
         embed = x[:, :, 0].contiguous().unsqueeze(1).view(-1).long()
 
-        left_hand_fts = fts.view(-1, n_fts)[embed == 1].view(-1, 21 * n_fts)
+#         left_hand_fts = fts.view(-1, n_fts)[embed == 1].view(-1, 21 * n_fts)
+        left_hand_fts = fts.view(-1, n_fts)[embed == 1].view(bs, -1, 21, n_fts)
+        if self.normalize:
+            left_hand_fts -= left_hand_fts.mean(1).mean(1).unsqueeze(1).unsqueeze(1)
+        left_hand_fts = left_hand_fts.view(-1, 21 * n_fts)
         left_hand_fts = self.left_hand_mlp(left_hand_fts)
 
-        right_hand_fts = fts.view(-1, n_fts)[embed == 2].view(-1, 21 * n_fts)
+        right_hand_fts = fts.view(-1, n_fts)[embed == 2].view(bs, -1, 21, n_fts)
+        if self.normalize:
+            right_hand_fts -= right_hand_fts.mean(1).mean(1).unsqueeze(1).unsqueeze(1)
+        right_hand_fts = right_hand_fts.view(-1, 21 * n_fts)
         right_hand_fts = self.right_hand_mlp(right_hand_fts)
         
         hand_fts = torch.stack([left_hand_fts, right_hand_fts], -1).amax(-1)
 
-        lips_fts = fts.view(-1, n_fts)[embed == 4].view(-1, 21 * n_fts)
+        lips_fts = fts.view(-1, n_fts)[embed == 4].view(bs, -1, 21, n_fts)
+        if self.normalize:
+            lips_fts -= lips_fts.mean(1).mean(1).unsqueeze(1).unsqueeze(1)
+        lips_fts = lips_fts.view(-1, 21 * n_fts)
         lips_fts = self.lips_mlp(lips_fts)
 
-        face_fts = fts.view(-1, n_fts)[(embed == 3) | (embed == 6)].view(-1, 25 * n_fts)
+        face_fts = fts.view(-1, n_fts)[(embed == 3) | (embed == 6)].view(bs, -1, 25, n_fts)
+        if self.normalize:
+            face_fts -= face_fts.mean(1).mean(1).unsqueeze(1).unsqueeze(1)
+        face_fts = face_fts.view(-1, 25 * n_fts)
         face_fts = self.face_mlp(face_fts)
 
         fts = fts.view(-1, n_fts * n_landmarks)

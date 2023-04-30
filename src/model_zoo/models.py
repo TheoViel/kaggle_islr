@@ -478,41 +478,60 @@ class SignMLPBert3(nn.Module):
         x_pos = self.pos_dense(x_pos)
 
         fts = self.dense(torch.cat([x_type, x_landmark, x_pos], -1))
-        
-#         fts = fts[:, :self.max_len - 5].contiguous()
-#         n_frames = self.max_len - 5
 
         n_fts = fts.size(-1)
         embed = x["type"][:, 0].unsqueeze(1).repeat(1, n_frames, 1).view(-1)  # this handles padding
 
-        left_hand_fts = fts.view(-1, n_fts)[embed == 1].view(bs * n_frames, -1)
-        left_hand_fts = self.left_hand_mlp(left_hand_fts)
+        # LEFT HAND FEATURES
+        left_hand_fts = fts.view(-1, n_fts)[embed == 1].view(bs, n_frames, -1, n_fts)
+        
+        mask = x["mask"][:, :, 0][:, :, None, None]
+        mask_left_hand = mask.repeat(1, 1, left_hand_fts.shape[2], n_fts)
+        m = left_hand_fts * mask_left_hand
+        m = m.sum((1, 2)) / mask_left_hand.sum((1, 2))  # masked avg
+        left_hand_fts = left_hand_fts - m[:, None, None, :]
+        left_hand_fts = left_hand_fts * mask_left_hand
+        
+        left_hand_fts = self.left_hand_mlp(left_hand_fts.view(bs * n_frames, -1))
 
-        right_hand_fts = fts.view(-1, n_fts)[embed == 2].view(bs * n_frames, -1)
-        right_hand_fts = self.right_hand_mlp(right_hand_fts)
+        # RIGHT HAND FEATURES
+        right_hand_fts = fts.view(-1, n_fts)[embed == 2].view(bs, n_frames, -1, n_fts)
+        
+        mask_right_hand = mask.repeat(1, 1, right_hand_fts.shape[2], n_fts)
+        m = right_hand_fts * mask_right_hand
+        m = m.sum((1, 2)) / mask_right_hand.sum((1, 2))  # masked avg
+        right_hand_fts = right_hand_fts - m[:, None, None, :]
+        right_hand_fts = right_hand_fts * mask_right_hand
+        
+        right_hand_fts = self.right_hand_mlp(right_hand_fts.view(bs * n_frames, -1))
 
         hand_fts = torch.stack([left_hand_fts, right_hand_fts], -1).amax(-1)
 
-        lips_fts = fts.view(-1, n_fts)[embed == 4].view(bs * n_frames, -1)
-        lips_fts = self.lips_mlp(lips_fts)
+        # LIPS FEATURES
+        lips_fts = fts.view(-1, n_fts)[embed == 4].view(bs, n_frames, -1, n_fts)
+        
+        mask_lips = mask.repeat(1, 1, lips_fts.shape[2], n_fts)
+        m = lips_fts * mask_lips
+        m = m.sum((1, 2)) / mask_lips.sum((1, 2))  # masked avg
+        lips_fts = lips_fts - m[:, None, None, :]
+        lips_fts = lips_fts * mask_lips
+        
+        lips_fts = self.lips_mlp(lips_fts.view(bs * n_frames, -1))
 
+        # FACE FEATURES
         face_fts = fts.view(-1, n_fts)[
             torch.isin(embed, torch.tensor([3, 6]).to(fts.device))
-        ].view(bs * n_frames, -1)
+        ].view(bs, n_frames, -1, n_fts)
 
-        face_fts = self.face_mlp(face_fts)
+        mask_face = mask.repeat(1, 1, face_fts.shape[2], n_fts)
+        m = face_fts * mask_face
+        m = m.sum((1, 2)) / mask_face.sum((1, 2))  # masked avg
+        face_fts = face_fts - m[:, None, None, :]
+        face_fts = face_fts * mask_face
 
-#         # Edge fts
-#         right_hand_edge_fts = get_edge_features(x, mode="right")
-#         right_hand_edge_fts = self.right_hand_edge_dense(right_hand_edge_fts)
-#         right_hand_edge_fts = self.right_hand_edge_mlp(right_hand_edge_fts.view(bs * n_frames, -1))
+        face_fts = self.face_mlp(face_fts.view(bs * n_frames, -1))
 
-#         left_hand_edge_fts = get_edge_features(x, mode="left")
-#         left_hand_edge_fts = self.left_hand_edge_dense(left_hand_edge_fts)
-#         left_hand_edge_fts = self.left_hand_edge_mlp(left_hand_edge_fts.view(bs * n_frames, -1))
-    
-#         hand_edge_fts = torch.stack([left_hand_edge_fts, right_hand_edge_fts], -1).amax(-1)
-
+        # ALL FEATURES
         fts = fts.view(bs * n_frames, -1)
         fts = self.full_mlp(fts)
 
@@ -522,35 +541,42 @@ class SignMLPBert3(nn.Module):
         fts = fts.view(bs, n_frames, -1)
 
         mask = x["mask"][:, :, 0][:, :n_frames]
-        fts *= mask.unsqueeze(-1)  # probably useless but kept for now
+        mask_avg = mask.unsqueeze(-1)
+
+        fts *= mask.unsqueeze(-1)
 
         where = np.random.randint(1, self.transfo_layers + 1) if perm is not None else 0  # Manifold Mixup
+        coefs = coefs.view(-1, 1, 1)  if coefs is not None else None
 
+#         print(mask_avg.size(), fts.size())
         if where == 1:
-            fts = coefs.view(-1, 1, 1) * fts + (1 - coefs.view(-1, 1, 1)) * fts[perm]
+            fts = coefs * fts + (1 - coefs) * fts[perm]
+#             mask_avg = coefs * mask_avg + (1 - coefs) * mask_avg[perm]
             mask = ((mask + mask[perm]) > 0).float()
+            mask_avg = mask.unsqueeze(-1)
 
         fts = self.frame_transformer_1(fts, mask).last_hidden_state
         
         if where == 2:
-            fts = coefs.view(-1, 1, 1) * fts + (1 - coefs.view(-1, 1, 1)) * fts[perm]
+            fts = coefs * fts + (1 - coefs) * fts[perm]
+#             mask_avg = coefs * mask_avg + (1 - coefs) * mask_avg[perm]
             mask = ((mask + mask[perm]) > 0).float()
+            mask_avg = mask.unsqueeze(-1)
 
         if self.frame_transformer_2 is not None:
             fts = self.frame_transformer_2(fts, mask).last_hidden_state
             
         if where == 3:
-            fts = coefs.view(-1, 1, 1) * fts + (1 - coefs.view(-1, 1, 1)) * fts[perm]
+            fts = coefs * fts + (1 - coefs) * fts[perm]
+#             mask_avg = coefs * mask_avg + (1 - coefs) * mask_avg[perm]
             mask = ((mask + mask[perm]) > 0).float()
-        
-#         print(fts.size())
+            mask_avg = mask.unsqueeze(-1)
 
         if self.frame_transformer_3 is not None:
             fts = self.frame_transformer_3(fts, mask).last_hidden_state
 
-        mask = mask.unsqueeze(-1)
-        fts = fts * mask
-        fts = fts.sum(1) / mask.sum(1)  # masked avg
+        fts = fts * mask_avg
+        fts = fts.sum(1) / mask_avg.sum(1)  # masked avg
 
         if self.multi_sample_dropout and self.training:
             logits = torch.stack(

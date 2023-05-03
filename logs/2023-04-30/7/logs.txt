@@ -1,0 +1,661 @@
+Device : Tesla V100-SXM2-32GB-LS 
+
+- Model mlp_bert_3
+- Epochs 100
+- Learning rate 3.0e-04   (n_gpus=8)
+
+ -> Training
+
+
+-------------   Fold 1 / 4  -------------
+
+    -> Data Preparation
+    -> 72119 training images
+    -> 22358 validation images
+    -> 35143010 trainable parameters
+    -> 9819298 distilled parameters
+
+Epoch 01/100 (step 2000) 	lr=1.1e-05 	 t=68s  	 loss=5.407	 val_loss=5.093    acc=0.074
+Epoch 02/100 (step 4000) 	lr=2.1e-05 	 t=63s  	 loss=4.818	 val_loss=4.619    acc=0.225
+Epoch 03/100 (step 6000) 	lr=3.2e-05 	 t=64s  	 loss=4.359	 val_loss=4.358    acc=0.311
+Epoch 04/100 (step 8000) 	lr=4.3e-05 	 t=63s  	 loss=4.074	 val_loss=4.205    acc=0.365
+Epoch 05/100 (step 10000) 	lr=5.3e-05 	 t=63s  	 loss=3.867	 val_loss=4.019    acc=0.445
+Epoch 06/100 (step 12000) 	lr=6.4e-05 	 t=64s  	 loss=3.729	 val_loss=3.946    acc=0.476
+Epoch 07/100 (step 14000) 	lr=7.5e-05 	 t=64s  	 loss=3.571	 val_loss=3.845    acc=0.509
+Epoch 08/100 (step 16000) 	lr=8.5e-05 	 t=63s  	 loss=3.518	 val_loss=3.790    acc=0.522
+Epoch 09/100 (step 18000) 	lr=9.6e-05 	 t=64s  	 loss=3.445	 val_loss=3.816    acc=0.508
+Epoch 09/100 (step 20000) 	lr=1.1e-04 	 t=62s  	 loss=3.395	 val_loss=3.743    acc=0.521
+Epoch 10/100 (step 22000) 	lr=1.2e-04 	 t=64s  	 loss=3.380	 val_loss=3.626    acc=0.578
+Epoch 11/100 (step 24000) 	lr=1.3e-04 	 t=64s  	 loss=3.363	 val_loss=3.639    acc=0.559
+Epoch 12/100 (step 26000) 	lr=1.4e-04 	 t=64s  	 loss=3.341	 val_loss=3.588    acc=0.578
+Epoch 13/100 (step 28000) 	lr=1.5e-04 	 t=64s  	 loss=3.322	 val_loss=3.571    acc=0.591
+Epoch 14/100 (step 30000) 	lr=1.6e-04 	 t=64s  	 loss=3.312	 val_loss=3.549    acc=0.597
+Epoch 15/100 (step 32000) 	lr=1.7e-04 	 t=64s  	 loss=3.351	 val_loss=3.534    acc=0.598
+Epoch 16/100 (step 34000) 	lr=1.8e-04 	 t=63s  	 loss=3.350	 val_loss=3.513    acc=0.612
+Epoch 17/100 (step 36000) 	lr=1.9e-04 	 t=64s  	 loss=3.408	 val_loss=3.473    acc=0.617
+Epoch 17/100 (step 38000) 	lr=2.0e-04 	 t=62s  	 loss=3.412	 val_loss=3.572    acc=0.583
+Epoch 18/100 (step 40000) 	lr=2.1e-04 	 t=63s  	 loss=3.472	 val_loss=3.596    acc=0.573
+Epoch 19/100 (step 42000) 	lr=2.2e-04 	 t=64s  	 loss=3.478	 val_loss=3.503    acc=0.614
+Epoch 20/100 (step 44000) 	lr=2.3e-04 	 t=64s  	 loss=3.541	 val_loss=3.516    acc=0.609
+Epoch 21/100 (step 46000) 	lr=2.5e-04 	 t=63s  	 loss=3.529	 val_loss=3.553    acc=0.596
+Epoch 22/100 (step 48000) 	lr=2.6e-04 	 t=63s  	 loss=3.595	 val_loss=3.564    acc=0.600
+Epoch 23/100 (step 50000) 	lr=2.7e-04 	 t=64s  	 loss=3.605	 val_loss=3.546    acc=0.604
+Epoch 24/100 (step 52000) 	lr=2.8e-04 	 t=64s  	 loss=3.639	 val_loss=3.529    acc=0.609
+Epoch 25/100 (step 54000) 	lr=2.9e-04 	 t=64s  	 loss=3.624	 val_loss=3.561    acc=0.587
+Epoch 25/100 (step 56000) 	lr=3.0e-04 	 t=63s  	 loss=3.623	 val_loss=3.535    acc=0.602
+Epoch 26/100 (step 58000) 	lr=3.0e-04 	 t=64s  	 loss=3.595	 val_loss=3.500    acc=0.603
+Epoch 27/100 (step 60000) 	lr=2.9e-04 	 t=64s  	 loss=3.511	 val_loss=3.443    acc=0.626
+Epoch 28/100 (step 62000) 	lr=2.9e-04 	 t=64s  	 loss=3.508	 val_loss=3.452    acc=0.626
+Epoch 29/100 (step 64000) 	lr=2.9e-04 	 t=64s  	 loss=3.497	 val_loss=3.441    acc=0.619
+Epoch 30/100 (step 66000) 	lr=2.8e-04 	 t=64s  	 loss=3.450	 val_loss=3.447    acc=0.620
+Epoch 31/100 (step 68000) 	lr=2.8e-04 	 t=63s  	 loss=3.430	 val_loss=3.429    acc=0.629
+Epoch 32/100 (step 70000) 	lr=2.8e-04 	 t=63s  	 loss=3.437	 val_loss=3.407    acc=0.624
+Epoch 33/100 (step 72000) 	lr=2.7e-04 	 t=64s  	 loss=3.370	 val_loss=3.429    acc=0.618
+Epoch 33/100 (step 74000) 	lr=2.7e-04 	 t=62s  	 loss=3.406	 val_loss=3.410    acc=0.632
+Epoch 34/100 (step 76000) 	lr=2.6e-04 	 t=64s  	 loss=3.359	 val_loss=3.395    acc=0.636
+Epoch 35/100 (step 78000) 	lr=2.6e-04 	 t=64s  	 loss=3.353	 val_loss=3.418    acc=0.625
+Epoch 36/100 (step 80000) 	lr=2.6e-04 	 t=64s  	 loss=3.319	 val_loss=3.399    acc=0.636
+Epoch 37/100 (step 82000) 	lr=2.5e-04 	 t=63s  	 loss=3.318	 val_loss=3.401    acc=0.637
+Epoch 38/100 (step 84000) 	lr=2.5e-04 	 t=64s  	 loss=3.286	 val_loss=3.394    acc=0.633
+Epoch 39/100 (step 86000) 	lr=2.5e-04 	 t=64s  	 loss=3.318	 val_loss=3.397    acc=0.639
+Epoch 40/100 (step 88000) 	lr=2.4e-04 	 t=63s  	 loss=3.272	 val_loss=3.356    acc=0.648
+Epoch 41/100 (step 90000) 	lr=2.4e-04 	 t=64s  	 loss=3.287	 val_loss=3.376    acc=0.638
+Epoch 41/100 (step 92000) 	lr=2.4e-04 	 t=62s  	 loss=3.239	 val_loss=3.359    acc=0.650
+Epoch 42/100 (step 94000) 	lr=2.3e-04 	 t=64s  	 loss=3.235	 val_loss=3.341    acc=0.649
+Epoch 43/100 (step 96000) 	lr=2.3e-04 	 t=63s  	 loss=3.216	 val_loss=3.344    acc=0.650
+Epoch 44/100 (step 98000) 	lr=2.3e-04 	 t=63s  	 loss=3.209	 val_loss=3.328    acc=0.652
+Epoch 45/100 (step 100000) 	lr=2.2e-04 	 t=63s  	 loss=3.179	 val_loss=3.335    acc=0.648
+Epoch 46/100 (step 102000) 	lr=2.2e-04 	 t=64s  	 loss=3.203	 val_loss=3.338    acc=0.650
+Epoch 47/100 (step 104000) 	lr=2.2e-04 	 t=63s  	 loss=3.165	 val_loss=3.327    acc=0.657
+Epoch 48/100 (step 106000) 	lr=2.1e-04 	 t=63s  	 loss=3.150	 val_loss=3.332    acc=0.656
+Epoch 49/100 (step 108000) 	lr=2.1e-04 	 t=63s  	 loss=3.140	 val_loss=3.298    acc=0.657
+Epoch 49/100 (step 110000) 	lr=2.0e-04 	 t=62s  	 loss=3.121	 val_loss=3.324    acc=0.659
+Epoch 50/100 (step 112000) 	lr=2.0e-04 	 t=65s  	 loss=2.785	 val_loss=3.304    acc=0.672
+Epoch 51/100 (step 114000) 	lr=2.0e-04 	 t=65s  	 loss=2.699	 val_loss=3.323    acc=0.662    acc_teach=0.687    acc_dist=0.675
+Epoch 52/100 (step 116000) 	lr=1.9e-04 	 t=64s  	 loss=2.733	 val_loss=3.317    acc=0.673    acc_teach=0.685    acc_dist=0.678
+Epoch 53/100 (step 118000) 	lr=1.9e-04 	 t=63s  	 loss=2.695	 val_loss=3.321    acc=0.672    acc_teach=0.690    acc_dist=0.681
+Epoch 54/100 (step 120000) 	lr=1.9e-04 	 t=63s  	 loss=2.724	 val_loss=3.343    acc=0.666    acc_teach=0.687    acc_dist=0.680
+Epoch 55/100 (step 122000) 	lr=1.8e-04 	 t=63s  	 loss=2.681	 val_loss=3.316    acc=0.671    acc_teach=0.686    acc_dist=0.680
+Epoch 56/100 (step 124000) 	lr=1.8e-04 	 t=63s  	 loss=2.703	 val_loss=3.337    acc=0.669    acc_teach=0.687    acc_dist=0.683
+Epoch 57/100 (step 126000) 	lr=1.8e-04 	 t=64s  	 loss=2.708	 val_loss=3.344    acc=0.667    acc_teach=0.684    acc_dist=0.679
+Epoch 57/100 (step 128000) 	lr=1.7e-04 	 t=62s  	 loss=2.657	 val_loss=3.291    acc=0.685    acc_teach=0.692    acc_dist=0.686
+Epoch 58/100 (step 130000) 	lr=1.7e-04 	 t=64s  	 loss=2.657	 val_loss=3.292    acc=0.680    acc_teach=0.690    acc_dist=0.686
+Epoch 59/100 (step 132000) 	lr=1.7e-04 	 t=64s  	 loss=2.625	 val_loss=3.285    acc=0.684    acc_teach=0.693    acc_dist=0.683
+Epoch 60/100 (step 134000) 	lr=1.6e-04 	 t=63s  	 loss=2.649	 val_loss=3.302    acc=0.677    acc_teach=0.691    acc_dist=0.687
+Epoch 61/100 (step 136000) 	lr=1.6e-04 	 t=63s  	 loss=2.637	 val_loss=3.302    acc=0.679    acc_teach=0.689    acc_dist=0.682
+Epoch 62/100 (step 138000) 	lr=1.5e-04 	 t=63s  	 loss=2.617	 val_loss=3.313    acc=0.673    acc_teach=0.694    acc_dist=0.691
+Epoch 63/100 (step 140000) 	lr=1.5e-04 	 t=63s  	 loss=2.629	 val_loss=3.317    acc=0.676    acc_teach=0.691    acc_dist=0.684
+Epoch 64/100 (step 142000) 	lr=1.5e-04 	 t=63s  	 loss=2.591	 val_loss=3.287    acc=0.680    acc_teach=0.690    acc_dist=0.688
+Epoch 65/100 (step 144000) 	lr=1.4e-04 	 t=64s  	 loss=2.610	 val_loss=3.279    acc=0.681    acc_teach=0.691    acc_dist=0.687
+Epoch 65/100 (step 146000) 	lr=1.4e-04 	 t=62s  	 loss=2.593	 val_loss=3.287    acc=0.679    acc_teach=0.693    acc_dist=0.686
+Epoch 66/100 (step 148000) 	lr=1.4e-04 	 t=63s  	 loss=2.562	 val_loss=3.277    acc=0.685    acc_teach=0.692    acc_dist=0.690
+Epoch 67/100 (step 150000) 	lr=1.3e-04 	 t=63s  	 loss=2.564	 val_loss=3.284    acc=0.683    acc_teach=0.696    acc_dist=0.693
+Epoch 68/100 (step 152000) 	lr=1.3e-04 	 t=63s  	 loss=2.559	 val_loss=3.273    acc=0.689    acc_teach=0.695    acc_dist=0.695
+Epoch 69/100 (step 154000) 	lr=1.3e-04 	 t=64s  	 loss=2.538	 val_loss=3.279    acc=0.683    acc_teach=0.698    acc_dist=0.692
+Epoch 70/100 (step 156000) 	lr=1.2e-04 	 t=63s  	 loss=2.521	 val_loss=3.274    acc=0.684    acc_teach=0.695    acc_dist=0.698
+Epoch 71/100 (step 158000) 	lr=1.2e-04 	 t=64s  	 loss=2.536	 val_loss=3.267    acc=0.685    acc_teach=0.692    acc_dist=0.692
+Epoch 72/100 (step 160000) 	lr=1.2e-04 	 t=64s  	 loss=2.525	 val_loss=3.278    acc=0.681    acc_teach=0.695    acc_dist=0.695
+Epoch 73/100 (step 162000) 	lr=1.1e-04 	 t=63s  	 loss=2.522	 val_loss=3.279    acc=0.682    acc_teach=0.694    acc_dist=0.689
+Epoch 73/100 (step 164000) 	lr=1.1e-04 	 t=62s  	 loss=2.494	 val_loss=3.243    acc=0.690    acc_teach=0.696    acc_dist=0.693
+Epoch 74/100 (step 166000) 	lr=1.0e-04 	 t=64s  	 loss=2.476	 val_loss=3.246    acc=0.692    acc_teach=0.695    acc_dist=0.690
+Epoch 75/100 (step 168000) 	lr=1.0e-04 	 t=63s  	 loss=2.472	 val_loss=3.245    acc=0.692    acc_teach=0.696    acc_dist=0.693
+Epoch 76/100 (step 170000) 	lr=9.8e-05 	 t=63s  	 loss=2.482	 val_loss=3.250    acc=0.688    acc_teach=0.696    acc_dist=0.693
+Epoch 77/100 (step 172000) 	lr=9.4e-05 	 t=63s  	 loss=2.459	 val_loss=3.237    acc=0.690    acc_teach=0.697    acc_dist=0.698
+Epoch 78/100 (step 174000) 	lr=9.1e-05 	 t=63s  	 loss=2.455	 val_loss=3.254    acc=0.689    acc_teach=0.695    acc_dist=0.697
+Epoch 79/100 (step 176000) 	lr=8.7e-05 	 t=63s  	 loss=2.472	 val_loss=3.241    acc=0.690    acc_teach=0.694    acc_dist=0.692
+Epoch 80/100 (step 178000) 	lr=8.4e-05 	 t=64s  	 loss=2.454	 val_loss=3.237    acc=0.691    acc_teach=0.696    acc_dist=0.694
+Epoch 81/100 (step 180000) 	lr=8.0e-05 	 t=63s  	 loss=2.450	 val_loss=3.233    acc=0.687    acc_teach=0.696    acc_dist=0.696
+Epoch 81/100 (step 182000) 	lr=7.7e-05 	 t=62s  	 loss=2.424	 val_loss=3.238    acc=0.689    acc_teach=0.701    acc_dist=0.697
+Epoch 82/100 (step 184000) 	lr=7.3e-05 	 t=64s  	 loss=2.436	 val_loss=3.223    acc=0.696    acc_teach=0.699    acc_dist=0.699
+Epoch 83/100 (step 186000) 	lr=6.9e-05 	 t=63s  	 loss=2.424	 val_loss=3.224    acc=0.694    acc_teach=0.700    acc_dist=0.698
+Epoch 84/100 (step 188000) 	lr=6.6e-05 	 t=63s  	 loss=2.399	 val_loss=3.233    acc=0.690    acc_teach=0.699    acc_dist=0.700
+Epoch 85/100 (step 190000) 	lr=6.2e-05 	 t=64s  	 loss=2.398	 val_loss=3.216    acc=0.695    acc_teach=0.700    acc_dist=0.701
+Epoch 86/100 (step 192000) 	lr=5.9e-05 	 t=63s  	 loss=2.386	 val_loss=3.212    acc=0.698    acc_teach=0.701    acc_dist=0.703
+Epoch 87/100 (step 194000) 	lr=5.5e-05 	 t=63s  	 loss=2.394	 val_loss=3.224    acc=0.693    acc_teach=0.699    acc_dist=0.700
+Epoch 88/100 (step 196000) 	lr=5.2e-05 	 t=63s  	 loss=2.371	 val_loss=3.210    acc=0.697    acc_teach=0.701    acc_dist=0.704
+Epoch 89/100 (step 198000) 	lr=4.8e-05 	 t=63s  	 loss=2.366	 val_loss=3.219    acc=0.697    acc_teach=0.701    acc_dist=0.702
+Epoch 89/100 (step 200000) 	lr=4.5e-05 	 t=62s  	 loss=2.367	 val_loss=3.204    acc=0.699    acc_teach=0.701    acc_dist=0.702
+Epoch 90/100 (step 202000) 	lr=4.1e-05 	 t=64s  	 loss=2.358	 val_loss=3.199    acc=0.700    acc_teach=0.701    acc_dist=0.703
+Epoch 91/100 (step 204000) 	lr=3.7e-05 	 t=64s  	 loss=2.358	 val_loss=3.205    acc=0.702    acc_teach=0.705    acc_dist=0.701
+Epoch 92/100 (step 206000) 	lr=3.4e-05 	 t=63s  	 loss=2.353	 val_loss=3.207    acc=0.696    acc_teach=0.702    acc_dist=0.707
+Epoch 93/100 (step 208000) 	lr=3.0e-05 	 t=63s  	 loss=2.351	 val_loss=3.191    acc=0.703    acc_teach=0.705    acc_dist=0.706
+Epoch 94/100 (step 210000) 	lr=2.7e-05 	 t=63s  	 loss=2.348	 val_loss=3.188    acc=0.703    acc_teach=0.704    acc_dist=0.704
+Epoch 95/100 (step 212000) 	lr=2.3e-05 	 t=64s  	 loss=2.344	 val_loss=3.188    acc=0.702    acc_teach=0.705    acc_dist=0.702
+Epoch 96/100 (step 214000) 	lr=2.0e-05 	 t=64s  	 loss=2.341	 val_loss=3.193    acc=0.701    acc_teach=0.701    acc_dist=0.705
+Epoch 97/100 (step 216000) 	lr=1.6e-05 	 t=63s  	 loss=2.341	 val_loss=3.189    acc=0.703    acc_teach=0.703    acc_dist=0.705
+Epoch 97/100 (step 218000) 	lr=1.2e-05 	 t=62s  	 loss=2.340	 val_loss=3.189    acc=0.703    acc_teach=0.703    acc_dist=0.705
+Epoch 98/100 (step 220000) 	lr=8.9e-06 	 t=64s  	 loss=2.337	 val_loss=3.185    acc=0.705    acc_teach=0.706    acc_dist=0.706
+Epoch 99/100 (step 222000) 	lr=5.4e-06 	 t=64s  	 loss=2.334	 val_loss=3.186    acc=0.704    acc_teach=0.703    acc_dist=0.706
+Epoch 100/100 (step 224808) 	lr=3.8e-07 	 t=87s  	 loss=2.333	 val_loss=3.179    acc=0.708    acc_teach=0.707    acc_dist=0.707
+
+ -> Saving weights to ../logs/2023-04-30/7/mlp_bert_3_0.pt
+
+
+-------------   Fold 2 / 4  -------------
+
+    -> Data Preparation
+    -> 71736 training images
+    -> 22741 validation images
+    -> 35143010 trainable parameters
+    -> 9819298 distilled parameters
+
+Epoch 01/100 (step 2000) 	lr=1.1e-05 	 t=67s  	 loss=5.410	 val_loss=5.094    acc=0.062
+Epoch 02/100 (step 4000) 	lr=2.1e-05 	 t=63s  	 loss=4.873	 val_loss=4.596    acc=0.209
+Epoch 03/100 (step 6000) 	lr=3.2e-05 	 t=63s  	 loss=4.460	 val_loss=4.339    acc=0.276
+Epoch 04/100 (step 8000) 	lr=4.3e-05 	 t=63s  	 loss=4.169	 val_loss=4.074    acc=0.379
+Epoch 05/100 (step 10000) 	lr=5.3e-05 	 t=63s  	 loss=4.017	 val_loss=3.904    acc=0.437
+Epoch 06/100 (step 12000) 	lr=6.4e-05 	 t=63s  	 loss=3.815	 val_loss=3.748    acc=0.503
+Epoch 07/100 (step 14000) 	lr=7.5e-05 	 t=63s  	 loss=3.718	 val_loss=3.688    acc=0.525
+Epoch 08/100 (step 16000) 	lr=8.6e-05 	 t=63s  	 loss=3.631	 val_loss=3.541    acc=0.576
+Epoch 09/100 (step 18000) 	lr=9.6e-05 	 t=63s  	 loss=3.559	 val_loss=3.522    acc=0.576
+Epoch 09/100 (step 20000) 	lr=1.1e-04 	 t=62s  	 loss=3.539	 val_loss=3.545    acc=0.564
+Epoch 10/100 (step 22000) 	lr=1.2e-04 	 t=63s  	 loss=3.493	 val_loss=3.440    acc=0.611
+Epoch 11/100 (step 24000) 	lr=1.3e-04 	 t=63s  	 loss=3.467	 val_loss=3.393    acc=0.622
+Epoch 12/100 (step 26000) 	lr=1.4e-04 	 t=63s  	 loss=3.447	 val_loss=3.356    acc=0.637
+Epoch 13/100 (step 28000) 	lr=1.5e-04 	 t=63s  	 loss=3.430	 val_loss=3.360    acc=0.643
+Epoch 14/100 (step 30000) 	lr=1.6e-04 	 t=63s  	 loss=3.460	 val_loss=3.344    acc=0.636
+Epoch 15/100 (step 32000) 	lr=1.7e-04 	 t=64s  	 loss=3.425	 val_loss=3.311    acc=0.650
+Epoch 16/100 (step 34000) 	lr=1.8e-04 	 t=63s  	 loss=3.449	 val_loss=3.337    acc=0.642
+Epoch 17/100 (step 36000) 	lr=1.9e-04 	 t=63s  	 loss=3.478	 val_loss=3.328    acc=0.645
+Epoch 17/100 (step 38000) 	lr=2.0e-04 	 t=62s  	 loss=3.527	 val_loss=3.299    acc=0.656
+Epoch 18/100 (step 40000) 	lr=2.1e-04 	 t=63s  	 loss=3.529	 val_loss=3.325    acc=0.648
+Epoch 19/100 (step 42000) 	lr=2.2e-04 	 t=63s  	 loss=3.586	 val_loss=3.328    acc=0.653
+Epoch 20/100 (step 44000) 	lr=2.4e-04 	 t=63s  	 loss=3.633	 val_loss=3.314    acc=0.659
+Epoch 21/100 (step 46000) 	lr=2.5e-04 	 t=63s  	 loss=3.649	 val_loss=3.300    acc=0.661
+Epoch 22/100 (step 48000) 	lr=2.6e-04 	 t=63s  	 loss=3.659	 val_loss=3.355    acc=0.642
+Epoch 23/100 (step 50000) 	lr=2.7e-04 	 t=63s  	 loss=3.648	 val_loss=3.303    acc=0.656
+Epoch 24/100 (step 52000) 	lr=2.8e-04 	 t=63s  	 loss=3.683	 val_loss=3.331    acc=0.652
+Epoch 25/100 (step 54000) 	lr=2.9e-04 	 t=63s  	 loss=3.693	 val_loss=3.314    acc=0.653
+Epoch 25/100 (step 56000) 	lr=3.0e-04 	 t=62s  	 loss=3.687	 val_loss=3.313    acc=0.656
+Epoch 26/100 (step 58000) 	lr=3.0e-04 	 t=64s  	 loss=3.688	 val_loss=3.292    acc=0.656
+Epoch 27/100 (step 60000) 	lr=2.9e-04 	 t=63s  	 loss=3.616	 val_loss=3.268    acc=0.663
+Epoch 28/100 (step 62000) 	lr=2.9e-04 	 t=64s  	 loss=3.651	 val_loss=3.281    acc=0.654
+Epoch 29/100 (step 64000) 	lr=2.9e-04 	 t=63s  	 loss=3.565	 val_loss=3.252    acc=0.668
+Epoch 30/100 (step 66000) 	lr=2.8e-04 	 t=63s  	 loss=3.547	 val_loss=3.229    acc=0.669
+Epoch 31/100 (step 68000) 	lr=2.8e-04 	 t=63s  	 loss=3.528	 val_loss=3.239    acc=0.670
+Epoch 32/100 (step 70000) 	lr=2.8e-04 	 t=64s  	 loss=3.521	 val_loss=3.231    acc=0.675
+Epoch 33/100 (step 72000) 	lr=2.7e-04 	 t=63s  	 loss=3.496	 val_loss=3.221    acc=0.681
+Epoch 34/100 (step 74000) 	lr=2.7e-04 	 t=64s  	 loss=3.495	 val_loss=3.248    acc=0.670
+Epoch 34/100 (step 76000) 	lr=2.6e-04 	 t=62s  	 loss=3.493	 val_loss=3.208    acc=0.683
+Epoch 35/100 (step 78000) 	lr=2.6e-04 	 t=64s  	 loss=3.445	 val_loss=3.204    acc=0.684
+Epoch 36/100 (step 80000) 	lr=2.6e-04 	 t=63s  	 loss=3.463	 val_loss=3.231    acc=0.665
+Epoch 37/100 (step 82000) 	lr=2.5e-04 	 t=63s  	 loss=3.437	 val_loss=3.198    acc=0.682
+Epoch 38/100 (step 84000) 	lr=2.5e-04 	 t=63s  	 loss=3.425	 val_loss=3.175    acc=0.690
+Epoch 39/100 (step 86000) 	lr=2.5e-04 	 t=63s  	 loss=3.372	 val_loss=3.208    acc=0.681
+Epoch 40/100 (step 88000) 	lr=2.4e-04 	 t=63s  	 loss=3.392	 val_loss=3.177    acc=0.694
+Epoch 41/100 (step 90000) 	lr=2.4e-04 	 t=63s  	 loss=3.367	 val_loss=3.163    acc=0.693
+Epoch 42/100 (step 92000) 	lr=2.4e-04 	 t=64s  	 loss=3.387	 val_loss=3.156    acc=0.696
+Epoch 42/100 (step 94000) 	lr=2.3e-04 	 t=62s  	 loss=3.369	 val_loss=3.153    acc=0.695
+Epoch 43/100 (step 96000) 	lr=2.3e-04 	 t=64s  	 loss=3.354	 val_loss=3.140    acc=0.697
+Epoch 44/100 (step 98000) 	lr=2.3e-04 	 t=64s  	 loss=3.330	 val_loss=3.159    acc=0.694
+Epoch 45/100 (step 100000) 	lr=2.2e-04 	 t=63s  	 loss=3.296	 val_loss=3.118    acc=0.707
+Epoch 46/100 (step 102000) 	lr=2.2e-04 	 t=64s  	 loss=3.285	 val_loss=3.145    acc=0.697
+Epoch 47/100 (step 104000) 	lr=2.1e-04 	 t=64s  	 loss=3.288	 val_loss=3.126    acc=0.707
+Epoch 48/100 (step 106000) 	lr=2.1e-04 	 t=64s  	 loss=3.256	 val_loss=3.120    acc=0.713
+Epoch 49/100 (step 108000) 	lr=2.1e-04 	 t=63s  	 loss=3.274	 val_loss=3.137    acc=0.703
+Epoch 50/100 (step 110000) 	lr=2.0e-04 	 t=66s  	 loss=3.170	 val_loss=3.125    acc=0.713
+Epoch 50/100 (step 112000) 	lr=2.0e-04 	 t=60s  	 loss=2.737	 val_loss=3.103    acc=0.728
+Epoch 51/100 (step 114000) 	lr=2.0e-04 	 t=65s  	 loss=2.762	 val_loss=3.123    acc=0.724    acc_teach=0.749    acc_dist=0.729
+Epoch 52/100 (step 116000) 	lr=1.9e-04 	 t=63s  	 loss=2.743	 val_loss=3.114    acc=0.731    acc_teach=0.747    acc_dist=0.741
+Epoch 53/100 (step 118000) 	lr=1.9e-04 	 t=64s  	 loss=2.751	 val_loss=3.136    acc=0.721    acc_teach=0.746    acc_dist=0.738
+Epoch 54/100 (step 120000) 	lr=1.9e-04 	 t=63s  	 loss=2.750	 val_loss=3.113    acc=0.725    acc_teach=0.747    acc_dist=0.736
+Epoch 55/100 (step 122000) 	lr=1.8e-04 	 t=63s  	 loss=2.735	 val_loss=3.116    acc=0.726    acc_teach=0.752    acc_dist=0.735
+Epoch 56/100 (step 124000) 	lr=1.8e-04 	 t=63s  	 loss=2.715	 val_loss=3.122    acc=0.721    acc_teach=0.746    acc_dist=0.745
+Epoch 57/100 (step 126000) 	lr=1.8e-04 	 t=63s  	 loss=2.715	 val_loss=3.119    acc=0.729    acc_teach=0.749    acc_dist=0.744
+Epoch 58/100 (step 128000) 	lr=1.7e-04 	 t=63s  	 loss=2.698	 val_loss=3.105    acc=0.734    acc_teach=0.750    acc_dist=0.743
+Epoch 59/100 (step 130000) 	lr=1.7e-04 	 t=63s  	 loss=2.666	 val_loss=3.110    acc=0.727    acc_teach=0.749    acc_dist=0.744
+Epoch 59/100 (step 132000) 	lr=1.6e-04 	 t=62s  	 loss=2.699	 val_loss=3.112    acc=0.729    acc_teach=0.752    acc_dist=0.742
+Epoch 60/100 (step 134000) 	lr=1.6e-04 	 t=64s  	 loss=2.649	 val_loss=3.099    acc=0.735    acc_teach=0.752    acc_dist=0.745
+Epoch 61/100 (step 136000) 	lr=1.6e-04 	 t=63s  	 loss=2.690	 val_loss=3.082    acc=0.731    acc_teach=0.754    acc_dist=0.741
+Epoch 62/100 (step 138000) 	lr=1.5e-04 	 t=63s  	 loss=2.650	 val_loss=3.070    acc=0.742    acc_teach=0.754    acc_dist=0.748
+Epoch 63/100 (step 140000) 	lr=1.5e-04 	 t=63s  	 loss=2.626	 val_loss=3.097    acc=0.728    acc_teach=0.756    acc_dist=0.741
+Epoch 64/100 (step 142000) 	lr=1.5e-04 	 t=63s  	 loss=2.638	 val_loss=3.085    acc=0.735    acc_teach=0.752    acc_dist=0.747
+Epoch 65/100 (step 144000) 	lr=1.4e-04 	 t=63s  	 loss=2.614	 val_loss=3.076    acc=0.739    acc_teach=0.754    acc_dist=0.747
+Epoch 66/100 (step 146000) 	lr=1.4e-04 	 t=64s  	 loss=2.596	 val_loss=3.086    acc=0.731    acc_teach=0.752    acc_dist=0.744
+Epoch 67/100 (step 148000) 	lr=1.4e-04 	 t=63s  	 loss=2.602	 val_loss=3.072    acc=0.738    acc_teach=0.752    acc_dist=0.747
+Epoch 67/100 (step 150000) 	lr=1.3e-04 	 t=62s  	 loss=2.585	 val_loss=3.072    acc=0.736    acc_teach=0.754    acc_dist=0.755
+Epoch 68/100 (step 152000) 	lr=1.3e-04 	 t=64s  	 loss=2.569	 val_loss=3.048    acc=0.739    acc_teach=0.753    acc_dist=0.748
+Epoch 69/100 (step 154000) 	lr=1.3e-04 	 t=63s  	 loss=2.573	 val_loss=3.066    acc=0.735    acc_teach=0.750    acc_dist=0.751
+Epoch 70/100 (step 156000) 	lr=1.2e-04 	 t=63s  	 loss=2.538	 val_loss=3.051    acc=0.740    acc_teach=0.753    acc_dist=0.748
+Epoch 71/100 (step 158000) 	lr=1.2e-04 	 t=63s  	 loss=2.531	 val_loss=3.036    acc=0.743    acc_teach=0.753    acc_dist=0.748
+Epoch 72/100 (step 160000) 	lr=1.1e-04 	 t=63s  	 loss=2.539	 val_loss=3.049    acc=0.740    acc_teach=0.755    acc_dist=0.750
+Epoch 73/100 (step 162000) 	lr=1.1e-04 	 t=63s  	 loss=2.515	 val_loss=3.039    acc=0.743    acc_teach=0.759    acc_dist=0.754
+Epoch 74/100 (step 164000) 	lr=1.1e-04 	 t=63s  	 loss=2.516	 val_loss=3.042    acc=0.746    acc_teach=0.757    acc_dist=0.750
+Epoch 75/100 (step 166000) 	lr=1.0e-04 	 t=63s  	 loss=2.492	 val_loss=3.061    acc=0.737    acc_teach=0.755    acc_dist=0.752
+Epoch 75/100 (step 168000) 	lr=1.0e-04 	 t=61s  	 loss=2.513	 val_loss=3.027    acc=0.747    acc_teach=0.754    acc_dist=0.752
+Epoch 76/100 (step 170000) 	lr=9.7e-05 	 t=64s  	 loss=2.482	 val_loss=3.048    acc=0.739    acc_teach=0.756    acc_dist=0.752
+Epoch 77/100 (step 172000) 	lr=9.3e-05 	 t=63s  	 loss=2.484	 val_loss=3.032    acc=0.746    acc_teach=0.758    acc_dist=0.751
+Epoch 78/100 (step 174000) 	lr=9.0e-05 	 t=63s  	 loss=2.505	 val_loss=3.019    acc=0.749    acc_teach=0.755    acc_dist=0.753
+Epoch 79/100 (step 176000) 	lr=8.6e-05 	 t=63s  	 loss=2.486	 val_loss=3.026    acc=0.745    acc_teach=0.758    acc_dist=0.749
+Epoch 80/100 (step 178000) 	lr=8.2e-05 	 t=63s  	 loss=2.447	 val_loss=3.006    acc=0.752    acc_teach=0.758    acc_dist=0.751
+Epoch 81/100 (step 180000) 	lr=7.9e-05 	 t=63s  	 loss=2.468	 val_loss=3.013    acc=0.753    acc_teach=0.756    acc_dist=0.754
+Epoch 82/100 (step 182000) 	lr=7.5e-05 	 t=63s  	 loss=2.442	 val_loss=3.002    acc=0.755    acc_teach=0.760    acc_dist=0.757
+Epoch 83/100 (step 184000) 	lr=7.2e-05 	 t=64s  	 loss=2.429	 val_loss=3.025    acc=0.748    acc_teach=0.757    acc_dist=0.756
+Epoch 84/100 (step 186000) 	lr=6.8e-05 	 t=63s  	 loss=2.426	 val_loss=3.009    acc=0.750    acc_teach=0.759    acc_dist=0.758
+Epoch 84/100 (step 188000) 	lr=6.5e-05 	 t=62s  	 loss=2.414	 val_loss=3.011    acc=0.749    acc_teach=0.755    acc_dist=0.757
+Epoch 85/100 (step 190000) 	lr=6.1e-05 	 t=63s  	 loss=2.397	 val_loss=3.013    acc=0.749    acc_teach=0.755    acc_dist=0.759
+Epoch 86/100 (step 192000) 	lr=5.7e-05 	 t=63s  	 loss=2.413	 val_loss=3.000    acc=0.751    acc_teach=0.756    acc_dist=0.758
+Epoch 87/100 (step 194000) 	lr=5.4e-05 	 t=63s  	 loss=2.399	 val_loss=2.990    acc=0.756    acc_teach=0.759    acc_dist=0.761
+Epoch 88/100 (step 196000) 	lr=5.0e-05 	 t=64s  	 loss=2.392	 val_loss=3.000    acc=0.752    acc_teach=0.758    acc_dist=0.759
+Epoch 89/100 (step 198000) 	lr=4.7e-05 	 t=63s  	 loss=2.383	 val_loss=2.985    acc=0.756    acc_teach=0.760    acc_dist=0.760
+Epoch 90/100 (step 200000) 	lr=4.3e-05 	 t=62s  	 loss=2.383	 val_loss=2.973    acc=0.760    acc_teach=0.760    acc_dist=0.761
+Epoch 91/100 (step 202000) 	lr=4.0e-05 	 t=65s  	 loss=2.369	 val_loss=2.978    acc=0.757    acc_teach=0.760    acc_dist=0.758
+Epoch 92/100 (step 204000) 	lr=3.6e-05 	 t=64s  	 loss=2.369	 val_loss=2.979    acc=0.756    acc_teach=0.759    acc_dist=0.759
+Epoch 92/100 (step 206000) 	lr=3.2e-05 	 t=62s  	 loss=2.362	 val_loss=2.983    acc=0.755    acc_teach=0.759    acc_dist=0.761
+Epoch 93/100 (step 208000) 	lr=2.9e-05 	 t=64s  	 loss=2.362	 val_loss=2.978    acc=0.759    acc_teach=0.761    acc_dist=0.762
+Epoch 94/100 (step 210000) 	lr=2.5e-05 	 t=64s  	 loss=2.359	 val_loss=2.975    acc=0.760    acc_teach=0.761    acc_dist=0.761
+Epoch 95/100 (step 212000) 	lr=2.2e-05 	 t=63s  	 loss=2.354	 val_loss=2.975    acc=0.759    acc_teach=0.763    acc_dist=0.760
+Epoch 96/100 (step 214000) 	lr=1.8e-05 	 t=63s  	 loss=2.352	 val_loss=2.971    acc=0.760    acc_teach=0.762    acc_dist=0.761
+Epoch 97/100 (step 216000) 	lr=1.5e-05 	 t=63s  	 loss=2.349	 val_loss=2.966    acc=0.762    acc_teach=0.761    acc_dist=0.760
+Epoch 98/100 (step 218000) 	lr=1.1e-05 	 t=63s  	 loss=2.347	 val_loss=2.964    acc=0.762    acc_teach=0.762    acc_dist=0.761
+Epoch 99/100 (step 220000) 	lr=7.5e-06 	 t=64s  	 loss=2.342	 val_loss=2.966    acc=0.761    acc_teach=0.762    acc_dist=0.762
+Epoch 100/100 (step 222000) 	lr=3.9e-06 	 t=64s  	 loss=2.343	 val_loss=2.962    acc=0.763    acc_teach=0.763    acc_dist=0.763
+Epoch 100/100 (step 224008) 	lr=3.6e-07 	 t=61s  	 loss=2.340	 val_loss=2.962    acc=0.763    acc_teach=0.762    acc_dist=0.763
+
+ -> Saving weights to ../logs/2023-04-30/7/mlp_bert_3_1.pt
+
+
+-------------   Fold 3 / 4  -------------
+
+    -> Data Preparation
+    -> 66240 training images
+    -> 28237 validation images
+    -> 35143010 trainable parameters
+    -> 9819298 distilled parameters
+
+Epoch 01/100 (step 2000) 	lr=1.2e-05 	 t=65s  	 loss=5.381	 val_loss=5.010    acc=0.098
+Epoch 02/100 (step 4000) 	lr=2.3e-05 	 t=63s  	 loss=4.776	 val_loss=4.476    acc=0.255
+Epoch 03/100 (step 6000) 	lr=3.5e-05 	 t=62s  	 loss=4.347	 val_loss=4.359    acc=0.300
+Epoch 04/100 (step 8000) 	lr=4.6e-05 	 t=62s  	 loss=4.107	 val_loss=4.061    acc=0.407
+Epoch 05/100 (step 10000) 	lr=5.8e-05 	 t=62s  	 loss=3.854	 val_loss=3.901    acc=0.481
+Epoch 06/100 (step 12000) 	lr=7.0e-05 	 t=63s  	 loss=3.682	 val_loss=3.818    acc=0.507
+Epoch 07/100 (step 14000) 	lr=8.1e-05 	 t=63s  	 loss=3.604	 val_loss=3.831    acc=0.483
+Epoch 08/100 (step 16000) 	lr=9.3e-05 	 t=63s  	 loss=3.533	 val_loss=3.640    acc=0.571
+Epoch 09/100 (step 18000) 	lr=1.0e-04 	 t=63s  	 loss=3.434	 val_loss=3.601    acc=0.577
+Epoch 10/100 (step 20000) 	lr=1.2e-04 	 t=63s  	 loss=3.412	 val_loss=3.508    acc=0.608
+Epoch 11/100 (step 22000) 	lr=1.3e-04 	 t=63s  	 loss=3.391	 val_loss=3.566    acc=0.576
+Epoch 12/100 (step 24000) 	lr=1.4e-04 	 t=63s  	 loss=3.339	 val_loss=3.488    acc=0.613
+Epoch 13/100 (step 26000) 	lr=1.5e-04 	 t=63s  	 loss=3.361	 val_loss=3.449    acc=0.624
+Epoch 14/100 (step 28000) 	lr=1.6e-04 	 t=63s  	 loss=3.335	 val_loss=3.442    acc=0.623
+Epoch 15/100 (step 30000) 	lr=1.7e-04 	 t=63s  	 loss=3.341	 val_loss=3.448    acc=0.630
+Epoch 16/100 (step 32000) 	lr=1.9e-04 	 t=64s  	 loss=3.347	 val_loss=3.455    acc=0.621
+Epoch 17/100 (step 34000) 	lr=2.0e-04 	 t=64s  	 loss=3.376	 val_loss=3.421    acc=0.635
+Epoch 18/100 (step 36000) 	lr=2.1e-04 	 t=63s  	 loss=3.436	 val_loss=3.477    acc=0.624
+Epoch 19/100 (step 38000) 	lr=2.2e-04 	 t=63s  	 loss=3.467	 val_loss=3.438    acc=0.631
+Epoch 20/100 (step 40000) 	lr=2.3e-04 	 t=64s  	 loss=3.478	 val_loss=3.410    acc=0.650
+Epoch 21/100 (step 42000) 	lr=2.4e-04 	 t=63s  	 loss=3.526	 val_loss=3.442    acc=0.631
+Epoch 22/100 (step 44000) 	lr=2.6e-04 	 t=63s  	 loss=3.575	 val_loss=3.447    acc=0.627
+Epoch 23/100 (step 46000) 	lr=2.7e-04 	 t=63s  	 loss=3.541	 val_loss=3.434    acc=0.640
+Epoch 24/100 (step 48000) 	lr=2.8e-04 	 t=63s  	 loss=3.595	 val_loss=3.514    acc=0.610
+Epoch 25/100 (step 50000) 	lr=2.9e-04 	 t=63s  	 loss=3.615	 val_loss=3.436    acc=0.635
+Epoch 26/100 (step 52000) 	lr=3.0e-04 	 t=63s  	 loss=3.567	 val_loss=3.411    acc=0.646
+Epoch 27/100 (step 54000) 	lr=3.0e-04 	 t=63s  	 loss=3.542	 val_loss=3.403    acc=0.649
+Epoch 28/100 (step 56000) 	lr=2.9e-04 	 t=63s  	 loss=3.476	 val_loss=3.404    acc=0.647
+Epoch 29/100 (step 58000) 	lr=2.9e-04 	 t=63s  	 loss=3.457	 val_loss=3.377    acc=0.646
+Epoch 30/100 (step 60000) 	lr=2.8e-04 	 t=63s  	 loss=3.439	 val_loss=3.331    acc=0.662
+Epoch 31/100 (step 62000) 	lr=2.8e-04 	 t=63s  	 loss=3.446	 val_loss=3.373    acc=0.653
+Epoch 32/100 (step 64000) 	lr=2.8e-04 	 t=63s  	 loss=3.410	 val_loss=3.337    acc=0.661
+Epoch 32/100 (step 66000) 	lr=2.7e-04 	 t=61s  	 loss=3.361	 val_loss=3.338    acc=0.659
+Epoch 33/100 (step 68000) 	lr=2.7e-04 	 t=64s  	 loss=3.297	 val_loss=3.325    acc=0.665
+Epoch 34/100 (step 70000) 	lr=2.6e-04 	 t=63s  	 loss=3.319	 val_loss=3.310    acc=0.663
+Epoch 35/100 (step 72000) 	lr=2.6e-04 	 t=63s  	 loss=3.340	 val_loss=3.326    acc=0.659
+Epoch 36/100 (step 74000) 	lr=2.6e-04 	 t=63s  	 loss=3.337	 val_loss=3.318    acc=0.666
+Epoch 37/100 (step 76000) 	lr=2.5e-04 	 t=63s  	 loss=3.312	 val_loss=3.314    acc=0.666
+Epoch 38/100 (step 78000) 	lr=2.5e-04 	 t=63s  	 loss=3.223	 val_loss=3.303    acc=0.667
+Epoch 39/100 (step 80000) 	lr=2.5e-04 	 t=63s  	 loss=3.284	 val_loss=3.305    acc=0.672
+Epoch 40/100 (step 82000) 	lr=2.4e-04 	 t=63s  	 loss=3.247	 val_loss=3.259    acc=0.681
+Epoch 41/100 (step 84000) 	lr=2.4e-04 	 t=63s  	 loss=3.225	 val_loss=3.266    acc=0.677
+Epoch 42/100 (step 86000) 	lr=2.3e-04 	 t=63s  	 loss=3.208	 val_loss=3.265    acc=0.674
+Epoch 43/100 (step 88000) 	lr=2.3e-04 	 t=63s  	 loss=3.195	 val_loss=3.265    acc=0.681
+Epoch 44/100 (step 90000) 	lr=2.3e-04 	 t=63s  	 loss=3.157	 val_loss=3.272    acc=0.669
+Epoch 45/100 (step 92000) 	lr=2.2e-04 	 t=63s  	 loss=3.189	 val_loss=3.261    acc=0.684
+Epoch 46/100 (step 94000) 	lr=2.2e-04 	 t=63s  	 loss=3.158	 val_loss=3.235    acc=0.685
+Epoch 47/100 (step 96000) 	lr=2.1e-04 	 t=63s  	 loss=3.138	 val_loss=3.262    acc=0.679
+Epoch 48/100 (step 98000) 	lr=2.1e-04 	 t=63s  	 loss=3.134	 val_loss=3.234    acc=0.685
+Epoch 49/100 (step 100000) 	lr=2.1e-04 	 t=63s  	 loss=3.113	 val_loss=3.234    acc=0.686
+Epoch 50/100 (step 102000) 	lr=2.0e-04 	 t=65s  	 loss=2.954	 val_loss=3.207    acc=0.704
+Epoch 51/100 (step 104000) 	lr=2.0e-04 	 t=65s  	 loss=2.754	 val_loss=3.184    acc=0.712    acc_teach=0.720    acc_dist=0.708
+Epoch 52/100 (step 106000) 	lr=1.9e-04 	 t=63s  	 loss=2.767	 val_loss=3.218    acc=0.702    acc_teach=0.720    acc_dist=0.708
+Epoch 53/100 (step 108000) 	lr=1.9e-04 	 t=63s  	 loss=2.725	 val_loss=3.234    acc=0.699    acc_teach=0.718    acc_dist=0.719
+Epoch 54/100 (step 110000) 	lr=1.9e-04 	 t=63s  	 loss=2.719	 val_loss=3.234    acc=0.705    acc_teach=0.721    acc_dist=0.718
+Epoch 55/100 (step 112000) 	lr=1.8e-04 	 t=63s  	 loss=2.723	 val_loss=3.250    acc=0.698    acc_teach=0.719    acc_dist=0.718
+Epoch 56/100 (step 114000) 	lr=1.8e-04 	 t=63s  	 loss=2.707	 val_loss=3.242    acc=0.701    acc_teach=0.718    acc_dist=0.723
+Epoch 57/100 (step 116000) 	lr=1.8e-04 	 t=62s  	 loss=2.721	 val_loss=3.223    acc=0.708    acc_teach=0.723    acc_dist=0.717
+Epoch 58/100 (step 118000) 	lr=1.7e-04 	 t=62s  	 loss=2.691	 val_loss=3.209    acc=0.708    acc_teach=0.724    acc_dist=0.724
+Epoch 59/100 (step 120000) 	lr=1.7e-04 	 t=62s  	 loss=2.705	 val_loss=3.208    acc=0.709    acc_teach=0.723    acc_dist=0.718
+Epoch 60/100 (step 122000) 	lr=1.6e-04 	 t=62s  	 loss=2.651	 val_loss=3.202    acc=0.708    acc_teach=0.721    acc_dist=0.721
+Epoch 61/100 (step 124000) 	lr=1.6e-04 	 t=62s  	 loss=2.649	 val_loss=3.202    acc=0.706    acc_teach=0.722    acc_dist=0.720
+Epoch 62/100 (step 126000) 	lr=1.6e-04 	 t=62s  	 loss=2.627	 val_loss=3.178    acc=0.714    acc_teach=0.726    acc_dist=0.722
+Epoch 63/100 (step 128000) 	lr=1.5e-04 	 t=62s  	 loss=2.630	 val_loss=3.209    acc=0.702    acc_teach=0.722    acc_dist=0.724
+Epoch 63/100 (step 130000) 	lr=1.5e-04 	 t=60s  	 loss=2.590	 val_loss=3.205    acc=0.712    acc_teach=0.723    acc_dist=0.722
+Epoch 64/100 (step 132000) 	lr=1.4e-04 	 t=62s  	 loss=2.634	 val_loss=3.179    acc=0.717    acc_teach=0.725    acc_dist=0.727
+Epoch 65/100 (step 134000) 	lr=1.4e-04 	 t=62s  	 loss=2.600	 val_loss=3.182    acc=0.711    acc_teach=0.723    acc_dist=0.726
+Epoch 66/100 (step 136000) 	lr=1.4e-04 	 t=63s  	 loss=2.585	 val_loss=3.168    acc=0.717    acc_teach=0.729    acc_dist=0.722
+Epoch 67/100 (step 138000) 	lr=1.3e-04 	 t=62s  	 loss=2.567	 val_loss=3.167    acc=0.711    acc_teach=0.728    acc_dist=0.720
+Epoch 68/100 (step 140000) 	lr=1.3e-04 	 t=63s  	 loss=2.568	 val_loss=3.163    acc=0.716    acc_teach=0.728    acc_dist=0.725
+Epoch 69/100 (step 142000) 	lr=1.3e-04 	 t=62s  	 loss=2.569	 val_loss=3.172    acc=0.715    acc_teach=0.727    acc_dist=0.721
+Epoch 70/100 (step 144000) 	lr=1.2e-04 	 t=62s  	 loss=2.568	 val_loss=3.146    acc=0.718    acc_teach=0.728    acc_dist=0.723
+Epoch 71/100 (step 146000) 	lr=1.2e-04 	 t=62s  	 loss=2.542	 val_loss=3.159    acc=0.717    acc_teach=0.728    acc_dist=0.728
+Epoch 72/100 (step 148000) 	lr=1.1e-04 	 t=63s  	 loss=2.524	 val_loss=3.167    acc=0.715    acc_teach=0.729    acc_dist=0.728
+Epoch 73/100 (step 150000) 	lr=1.1e-04 	 t=63s  	 loss=2.517	 val_loss=3.156    acc=0.721    acc_teach=0.729    acc_dist=0.722
+Epoch 74/100 (step 152000) 	lr=1.1e-04 	 t=62s  	 loss=2.523	 val_loss=3.158    acc=0.717    acc_teach=0.728    acc_dist=0.727
+Epoch 75/100 (step 154000) 	lr=1.0e-04 	 t=62s  	 loss=2.507	 val_loss=3.142    acc=0.720    acc_teach=0.729    acc_dist=0.727
+Epoch 76/100 (step 156000) 	lr=9.8e-05 	 t=62s  	 loss=2.500	 val_loss=3.168    acc=0.716    acc_teach=0.728    acc_dist=0.725
+Epoch 77/100 (step 158000) 	lr=9.4e-05 	 t=62s  	 loss=2.476	 val_loss=3.147    acc=0.720    acc_teach=0.728    acc_dist=0.729
+Epoch 78/100 (step 160000) 	lr=9.0e-05 	 t=62s  	 loss=2.463	 val_loss=3.148    acc=0.717    acc_teach=0.728    acc_dist=0.732
+Epoch 79/100 (step 162000) 	lr=8.6e-05 	 t=63s  	 loss=2.475	 val_loss=3.140    acc=0.721    acc_teach=0.729    acc_dist=0.729
+Epoch 80/100 (step 164000) 	lr=8.2e-05 	 t=63s  	 loss=2.445	 val_loss=3.134    acc=0.719    acc_teach=0.731    acc_dist=0.732
+Epoch 81/100 (step 166000) 	lr=7.9e-05 	 t=62s  	 loss=2.428	 val_loss=3.126    acc=0.726    acc_teach=0.731    acc_dist=0.734
+Epoch 82/100 (step 168000) 	lr=7.5e-05 	 t=62s  	 loss=2.428	 val_loss=3.129    acc=0.723    acc_teach=0.731    acc_dist=0.730
+Epoch 83/100 (step 170000) 	lr=7.1e-05 	 t=62s  	 loss=2.442	 val_loss=3.119    acc=0.726    acc_teach=0.731    acc_dist=0.732
+Epoch 84/100 (step 172000) 	lr=6.7e-05 	 t=62s  	 loss=2.409	 val_loss=3.116    acc=0.724    acc_teach=0.731    acc_dist=0.733
+Epoch 85/100 (step 174000) 	lr=6.3e-05 	 t=63s  	 loss=2.413	 val_loss=3.106    acc=0.730    acc_teach=0.734    acc_dist=0.734
+Epoch 86/100 (step 176000) 	lr=5.9e-05 	 t=62s  	 loss=2.390	 val_loss=3.108    acc=0.727    acc_teach=0.731    acc_dist=0.735
+Epoch 87/100 (step 178000) 	lr=5.5e-05 	 t=62s  	 loss=2.403	 val_loss=3.096    acc=0.727    acc_teach=0.732    acc_dist=0.733
+Epoch 88/100 (step 180000) 	lr=5.2e-05 	 t=62s  	 loss=2.398	 val_loss=3.094    acc=0.731    acc_teach=0.731    acc_dist=0.735
+Epoch 89/100 (step 182000) 	lr=4.8e-05 	 t=61s  	 loss=2.376	 val_loss=3.100    acc=0.729    acc_teach=0.732    acc_dist=0.735
+Epoch 90/100 (step 184000) 	lr=4.4e-05 	 t=62s  	 loss=2.373	 val_loss=3.097    acc=0.730    acc_teach=0.735    acc_dist=0.737
+Epoch 91/100 (step 186000) 	lr=4.0e-05 	 t=62s  	 loss=2.368	 val_loss=3.088    acc=0.734    acc_teach=0.735    acc_dist=0.736
+Epoch 92/100 (step 188000) 	lr=3.6e-05 	 t=63s  	 loss=2.365	 val_loss=3.089    acc=0.733    acc_teach=0.734    acc_dist=0.736
+Epoch 93/100 (step 190000) 	lr=3.2e-05 	 t=62s  	 loss=2.359	 val_loss=3.089    acc=0.733    acc_teach=0.735    acc_dist=0.735
+Epoch 94/100 (step 192000) 	lr=2.8e-05 	 t=65s  	 loss=2.357	 val_loss=3.093    acc=0.729    acc_teach=0.732    acc_dist=0.737
+Epoch 94/100 (step 194000) 	lr=2.4e-05 	 t=60s  	 loss=2.353	 val_loss=3.093    acc=0.729    acc_teach=0.732    acc_dist=0.734
+Epoch 95/100 (step 196000) 	lr=2.1e-05 	 t=63s  	 loss=2.350	 val_loss=3.084    acc=0.735    acc_teach=0.734    acc_dist=0.739
+Epoch 96/100 (step 198000) 	lr=1.7e-05 	 t=63s  	 loss=2.348	 val_loss=3.079    acc=0.735    acc_teach=0.735    acc_dist=0.739
+Epoch 97/100 (step 200000) 	lr=1.3e-05 	 t=62s  	 loss=2.346	 val_loss=3.076    acc=0.737    acc_teach=0.736    acc_dist=0.738
+Epoch 98/100 (step 202000) 	lr=8.9e-06 	 t=63s  	 loss=2.343	 val_loss=3.079    acc=0.737    acc_teach=0.737    acc_dist=0.741
+Epoch 99/100 (step 204000) 	lr=5.0e-06 	 t=62s  	 loss=2.342	 val_loss=3.074    acc=0.737    acc_teach=0.737    acc_dist=0.739
+Epoch 100/100 (step 206408) 	lr=3.7e-07 	 t=74s  	 loss=2.339	 val_loss=3.074    acc=0.736    acc_teach=0.736    acc_dist=0.740
+
+ -> Saving weights to ../logs/2023-04-30/7/mlp_bert_3_2.pt
+
+
+-------------   Fold 4 / 4  -------------
+
+    -> Data Preparation
+    -> 73336 training images
+    -> 21141 validation images
+    -> 35143010 trainable parameters
+    -> 9819298 distilled parameters
+
+Epoch 01/100 (step 2000) 	lr=1.0e-05 	 t=67s  	 loss=5.420	 val_loss=5.141    acc=0.062
+Epoch 02/100 (step 4000) 	lr=2.1e-05 	 t=64s  	 loss=4.851	 val_loss=4.606    acc=0.189
+Epoch 03/100 (step 6000) 	lr=3.1e-05 	 t=64s  	 loss=4.425	 val_loss=4.334    acc=0.306
+Epoch 04/100 (step 8000) 	lr=4.2e-05 	 t=63s  	 loss=4.129	 val_loss=4.142    acc=0.371
+Epoch 05/100 (step 10000) 	lr=5.2e-05 	 t=63s  	 loss=3.957	 val_loss=4.019    acc=0.416
+Epoch 06/100 (step 12000) 	lr=6.3e-05 	 t=63s  	 loss=3.765	 val_loss=3.804    acc=0.487
+Epoch 07/100 (step 14000) 	lr=7.3e-05 	 t=64s  	 loss=3.630	 val_loss=3.738    acc=0.515
+Epoch 07/100 (step 16000) 	lr=8.4e-05 	 t=62s  	 loss=3.574	 val_loss=3.671    acc=0.537
+Epoch 08/100 (step 18000) 	lr=9.4e-05 	 t=64s  	 loss=3.489	 val_loss=3.580    acc=0.557
+Epoch 09/100 (step 20000) 	lr=1.0e-04 	 t=64s  	 loss=3.422	 val_loss=3.594    acc=0.556
+Epoch 10/100 (step 22000) 	lr=1.2e-04 	 t=64s  	 loss=3.397	 val_loss=3.512    acc=0.587
+Epoch 11/100 (step 24000) 	lr=1.3e-04 	 t=64s  	 loss=3.397	 val_loss=3.495    acc=0.590
+Epoch 12/100 (step 26000) 	lr=1.4e-04 	 t=64s  	 loss=3.322	 val_loss=3.451    acc=0.609
+Epoch 13/100 (step 28000) 	lr=1.5e-04 	 t=63s  	 loss=3.375	 val_loss=3.411    acc=0.629
+Epoch 14/100 (step 30000) 	lr=1.6e-04 	 t=63s  	 loss=3.321	 val_loss=3.394    acc=0.627
+Epoch 14/100 (step 32000) 	lr=1.7e-04 	 t=62s  	 loss=3.349	 val_loss=3.373    acc=0.638
+Epoch 15/100 (step 34000) 	lr=1.8e-04 	 t=65s  	 loss=3.369	 val_loss=3.393    acc=0.636
+Epoch 16/100 (step 36000) 	lr=1.9e-04 	 t=64s  	 loss=3.392	 val_loss=3.388    acc=0.630
+Epoch 17/100 (step 38000) 	lr=2.0e-04 	 t=64s  	 loss=3.401	 val_loss=3.343    acc=0.651
+Epoch 18/100 (step 40000) 	lr=2.1e-04 	 t=64s  	 loss=3.401	 val_loss=3.376    acc=0.637
+Epoch 19/100 (step 42000) 	lr=2.2e-04 	 t=63s  	 loss=3.453	 val_loss=3.397    acc=0.640
+Epoch 20/100 (step 44000) 	lr=2.3e-04 	 t=64s  	 loss=3.487	 val_loss=3.360    acc=0.646
+Epoch 21/100 (step 46000) 	lr=2.4e-04 	 t=63s  	 loss=3.527	 val_loss=3.396    acc=0.630
+Epoch 21/100 (step 48000) 	lr=2.5e-04 	 t=62s  	 loss=3.547	 val_loss=3.355    acc=0.658
+Epoch 22/100 (step 50000) 	lr=2.6e-04 	 t=64s  	 loss=3.571	 val_loss=3.377    acc=0.636
+Epoch 23/100 (step 52000) 	lr=2.7e-04 	 t=64s  	 loss=3.607	 val_loss=3.359    acc=0.648
+Epoch 24/100 (step 54000) 	lr=2.8e-04 	 t=64s  	 loss=3.560	 val_loss=3.372    acc=0.637
+Epoch 25/100 (step 56000) 	lr=2.9e-04 	 t=64s  	 loss=3.620	 val_loss=3.350    acc=0.648
+Epoch 26/100 (step 58000) 	lr=3.0e-04 	 t=64s  	 loss=3.541	 val_loss=3.376    acc=0.639
+Epoch 27/100 (step 60000) 	lr=3.0e-04 	 t=64s  	 loss=3.550	 val_loss=3.331    acc=0.656
+Epoch 28/100 (step 62000) 	lr=2.9e-04 	 t=63s  	 loss=3.505	 val_loss=3.327    acc=0.647
+Epoch 28/100 (step 64000) 	lr=2.9e-04 	 t=62s  	 loss=3.463	 val_loss=3.305    acc=0.653
+Epoch 29/100 (step 66000) 	lr=2.8e-04 	 t=64s  	 loss=3.427	 val_loss=3.316    acc=0.655
+Epoch 30/100 (step 68000) 	lr=2.8e-04 	 t=63s  	 loss=3.416	 val_loss=3.281    acc=0.661
+Epoch 31/100 (step 70000) 	lr=2.8e-04 	 t=64s  	 loss=3.422	 val_loss=3.278    acc=0.664
+Epoch 32/100 (step 72000) 	lr=2.7e-04 	 t=64s  	 loss=3.409	 val_loss=3.251    acc=0.674
+Epoch 33/100 (step 74000) 	lr=2.7e-04 	 t=64s  	 loss=3.354	 val_loss=3.239    acc=0.674
+Epoch 34/100 (step 76000) 	lr=2.7e-04 	 t=64s  	 loss=3.383	 val_loss=3.251    acc=0.671
+Epoch 35/100 (step 78000) 	lr=2.6e-04 	 t=63s  	 loss=3.386	 val_loss=3.247    acc=0.667
+Epoch 35/100 (step 80000) 	lr=2.6e-04 	 t=62s  	 loss=3.318	 val_loss=3.217    acc=0.680
+Epoch 36/100 (step 82000) 	lr=2.6e-04 	 t=64s  	 loss=3.333	 val_loss=3.226    acc=0.677
+Epoch 37/100 (step 84000) 	lr=2.5e-04 	 t=64s  	 loss=3.294	 val_loss=3.222    acc=0.679
+Epoch 38/100 (step 86000) 	lr=2.5e-04 	 t=64s  	 loss=3.289	 val_loss=3.239    acc=0.667
+Epoch 39/100 (step 88000) 	lr=2.5e-04 	 t=64s  	 loss=3.274	 val_loss=3.234    acc=0.676
+Epoch 40/100 (step 90000) 	lr=2.4e-04 	 t=63s  	 loss=3.228	 val_loss=3.236    acc=0.670
+Epoch 41/100 (step 92000) 	lr=2.4e-04 	 t=64s  	 loss=3.271	 val_loss=3.241    acc=0.671
+Epoch 42/100 (step 94000) 	lr=2.4e-04 	 t=64s  	 loss=3.261	 val_loss=3.212    acc=0.678
+Epoch 42/100 (step 96000) 	lr=2.3e-04 	 t=63s  	 loss=3.199	 val_loss=3.208    acc=0.684
+Epoch 43/100 (step 98000) 	lr=2.3e-04 	 t=64s  	 loss=3.187	 val_loss=3.221    acc=0.674
+Epoch 44/100 (step 100000) 	lr=2.3e-04 	 t=64s  	 loss=3.174	 val_loss=3.208    acc=0.681
+Epoch 45/100 (step 102000) 	lr=2.2e-04 	 t=63s  	 loss=3.245	 val_loss=3.178    acc=0.695
+Epoch 46/100 (step 104000) 	lr=2.2e-04 	 t=63s  	 loss=3.170	 val_loss=3.175    acc=0.691
+Epoch 47/100 (step 106000) 	lr=2.1e-04 	 t=64s  	 loss=3.115	 val_loss=3.191    acc=0.690
+Epoch 48/100 (step 108000) 	lr=2.1e-04 	 t=64s  	 loss=3.156	 val_loss=3.206    acc=0.679
+Epoch 49/100 (step 110000) 	lr=2.1e-04 	 t=64s  	 loss=3.124	 val_loss=3.177    acc=0.694
+Epoch 49/100 (step 112000) 	lr=2.0e-04 	 t=62s  	 loss=3.113	 val_loss=3.187    acc=0.685
+Epoch 50/100 (step 114000) 	lr=2.0e-04 	 t=66s  	 loss=2.788	 val_loss=3.162    acc=0.704
+Epoch 51/100 (step 116000) 	lr=2.0e-04 	 t=65s  	 loss=2.709	 val_loss=3.161    acc=0.708    acc_teach=0.725    acc_dist=0.717
+Epoch 52/100 (step 118000) 	lr=1.9e-04 	 t=64s  	 loss=2.722	 val_loss=3.175    acc=0.704    acc_teach=0.726    acc_dist=0.724
+Epoch 53/100 (step 120000) 	lr=1.9e-04 	 t=63s  	 loss=2.758	 val_loss=3.194    acc=0.698    acc_teach=0.721    acc_dist=0.717
+Epoch 54/100 (step 122000) 	lr=1.9e-04 	 t=64s  	 loss=2.728	 val_loss=3.173    acc=0.707    acc_teach=0.727    acc_dist=0.718
+Epoch 55/100 (step 124000) 	lr=1.8e-04 	 t=64s  	 loss=2.708	 val_loss=3.177    acc=0.706    acc_teach=0.725    acc_dist=0.721
+Epoch 56/100 (step 126000) 	lr=1.8e-04 	 t=64s  	 loss=2.708	 val_loss=3.159    acc=0.713    acc_teach=0.729    acc_dist=0.726
+Epoch 56/100 (step 128000) 	lr=1.8e-04 	 t=62s  	 loss=2.688	 val_loss=3.172    acc=0.705    acc_teach=0.731    acc_dist=0.723
+Epoch 57/100 (step 130000) 	lr=1.7e-04 	 t=63s  	 loss=2.690	 val_loss=3.186    acc=0.695    acc_teach=0.727    acc_dist=0.726
+Epoch 58/100 (step 132000) 	lr=1.7e-04 	 t=63s  	 loss=2.695	 val_loss=3.152    acc=0.717    acc_teach=0.731    acc_dist=0.727
+Epoch 59/100 (step 134000) 	lr=1.7e-04 	 t=64s  	 loss=2.661	 val_loss=3.146    acc=0.716    acc_teach=0.733    acc_dist=0.727
+Epoch 60/100 (step 136000) 	lr=1.6e-04 	 t=64s  	 loss=2.652	 val_loss=3.137    acc=0.716    acc_teach=0.732    acc_dist=0.727
+Epoch 61/100 (step 138000) 	lr=1.6e-04 	 t=64s  	 loss=2.662	 val_loss=3.141    acc=0.715    acc_teach=0.732    acc_dist=0.724
+Epoch 62/100 (step 140000) 	lr=1.6e-04 	 t=63s  	 loss=2.642	 val_loss=3.159    acc=0.712    acc_teach=0.734    acc_dist=0.730
+Epoch 63/100 (step 142000) 	lr=1.5e-04 	 t=63s  	 loss=2.636	 val_loss=3.151    acc=0.715    acc_teach=0.733    acc_dist=0.730
+Epoch 63/100 (step 144000) 	lr=1.5e-04 	 t=62s  	 loss=2.602	 val_loss=3.140    acc=0.716    acc_teach=0.735    acc_dist=0.730
+Epoch 64/100 (step 146000) 	lr=1.5e-04 	 t=63s  	 loss=2.602	 val_loss=3.121    acc=0.719    acc_teach=0.735    acc_dist=0.731
+Epoch 65/100 (step 148000) 	lr=1.4e-04 	 t=64s  	 loss=2.604	 val_loss=3.149    acc=0.710    acc_teach=0.734    acc_dist=0.730
+Epoch 66/100 (step 150000) 	lr=1.4e-04 	 t=64s  	 loss=2.580	 val_loss=3.122    acc=0.721    acc_teach=0.733    acc_dist=0.731
+Epoch 67/100 (step 152000) 	lr=1.3e-04 	 t=63s  	 loss=2.597	 val_loss=3.121    acc=0.723    acc_teach=0.732    acc_dist=0.730
+Epoch 68/100 (step 154000) 	lr=1.3e-04 	 t=64s  	 loss=2.550	 val_loss=3.133    acc=0.713    acc_teach=0.737    acc_dist=0.734
+Epoch 69/100 (step 156000) 	lr=1.3e-04 	 t=64s  	 loss=2.566	 val_loss=3.120    acc=0.721    acc_teach=0.736    acc_dist=0.731
+Epoch 70/100 (step 158000) 	lr=1.2e-04 	 t=63s  	 loss=2.597	 val_loss=3.133    acc=0.715    acc_teach=0.737    acc_dist=0.735
+Epoch 70/100 (step 160000) 	lr=1.2e-04 	 t=62s  	 loss=2.555	 val_loss=3.123    acc=0.722    acc_teach=0.737    acc_dist=0.735
+Epoch 71/100 (step 162000) 	lr=1.2e-04 	 t=63s  	 loss=2.520	 val_loss=3.116    acc=0.721    acc_teach=0.733    acc_dist=0.729
+Epoch 72/100 (step 164000) 	lr=1.1e-04 	 t=63s  	 loss=2.531	 val_loss=3.111    acc=0.723    acc_teach=0.739    acc_dist=0.737
+Epoch 73/100 (step 166000) 	lr=1.1e-04 	 t=63s  	 loss=2.508	 val_loss=3.087    acc=0.731    acc_teach=0.737    acc_dist=0.736
+Epoch 74/100 (step 168000) 	lr=1.1e-04 	 t=63s  	 loss=2.501	 val_loss=3.082    acc=0.734    acc_teach=0.740    acc_dist=0.729
+Epoch 75/100 (step 170000) 	lr=1.0e-04 	 t=63s  	 loss=2.497	 val_loss=3.113    acc=0.722    acc_teach=0.736    acc_dist=0.736
+Epoch 76/100 (step 172000) 	lr=1.0e-04 	 t=63s  	 loss=2.489	 val_loss=3.102    acc=0.724    acc_teach=0.737    acc_dist=0.740
+Epoch 77/100 (step 174000) 	lr=9.6e-05 	 t=64s  	 loss=2.477	 val_loss=3.094    acc=0.726    acc_teach=0.740    acc_dist=0.741
+Epoch 77/100 (step 176000) 	lr=9.3e-05 	 t=62s  	 loss=2.469	 val_loss=3.089    acc=0.730    acc_teach=0.736    acc_dist=0.739
+Epoch 78/100 (step 178000) 	lr=8.9e-05 	 t=63s  	 loss=2.458	 val_loss=3.100    acc=0.723    acc_teach=0.736    acc_dist=0.732
+Epoch 79/100 (step 180000) 	lr=8.6e-05 	 t=63s  	 loss=2.459	 val_loss=3.088    acc=0.728    acc_teach=0.736    acc_dist=0.738
+Epoch 80/100 (step 182000) 	lr=8.2e-05 	 t=63s  	 loss=2.439	 val_loss=3.068    acc=0.736    acc_teach=0.740    acc_dist=0.742
+Epoch 81/100 (step 184000) 	lr=7.9e-05 	 t=63s  	 loss=2.450	 val_loss=3.076    acc=0.732    acc_teach=0.739    acc_dist=0.742
+Epoch 82/100 (step 186000) 	lr=7.5e-05 	 t=64s  	 loss=2.428	 val_loss=3.082    acc=0.729    acc_teach=0.741    acc_dist=0.740
+Epoch 83/100 (step 188000) 	lr=7.2e-05 	 t=64s  	 loss=2.413	 val_loss=3.075    acc=0.732    acc_teach=0.742    acc_dist=0.738
+Epoch 84/100 (step 190000) 	lr=6.8e-05 	 t=63s  	 loss=2.433	 val_loss=3.067    acc=0.735    acc_teach=0.741    acc_dist=0.740
+Epoch 84/100 (step 192000) 	lr=6.5e-05 	 t=63s  	 loss=2.417	 val_loss=3.056    acc=0.739    acc_teach=0.740    acc_dist=0.741
+Epoch 85/100 (step 194000) 	lr=6.1e-05 	 t=71s  	 loss=2.400	 val_loss=3.063    acc=0.736    acc_teach=0.740    acc_dist=0.739
+Epoch 86/100 (step 196000) 	lr=5.8e-05 	 t=68s  	 loss=2.408	 val_loss=3.063    acc=0.737    acc_teach=0.741    acc_dist=0.743
+Epoch 87/100 (step 198000) 	lr=5.4e-05 	 t=63s  	 loss=2.390	 val_loss=3.064    acc=0.736    acc_teach=0.744    acc_dist=0.742
+Epoch 88/100 (step 200000) 	lr=5.1e-05 	 t=64s  	 loss=2.382	 val_loss=3.050    acc=0.742    acc_teach=0.741    acc_dist=0.744
+Epoch 89/100 (step 202000) 	lr=4.7e-05 	 t=64s  	 loss=2.373	 val_loss=3.065    acc=0.735    acc_teach=0.739    acc_dist=0.740
+Epoch 90/100 (step 204000) 	lr=4.4e-05 	 t=65s  	 loss=2.369	 val_loss=3.058    acc=0.737    acc_teach=0.739    acc_dist=0.742
+Epoch 91/100 (step 206000) 	lr=4.0e-05 	 t=63s  	 loss=2.366	 val_loss=3.047    acc=0.740    acc_teach=0.743    acc_dist=0.745
+Epoch 91/100 (step 208000) 	lr=3.7e-05 	 t=62s  	 loss=2.361	 val_loss=3.059    acc=0.736    acc_teach=0.738    acc_dist=0.742
+Epoch 92/100 (step 210000) 	lr=3.3e-05 	 t=64s  	 loss=2.358	 val_loss=3.054    acc=0.737    acc_teach=0.741    acc_dist=0.746
+Epoch 93/100 (step 212000) 	lr=3.0e-05 	 t=64s  	 loss=2.353	 val_loss=3.046    acc=0.739    acc_teach=0.744    acc_dist=0.746
+Epoch 94/100 (step 214000) 	lr=2.6e-05 	 t=63s  	 loss=2.352	 val_loss=3.039    acc=0.743    acc_teach=0.744    acc_dist=0.743
+Epoch 95/100 (step 216000) 	lr=2.3e-05 	 t=63s  	 loss=2.348	 val_loss=3.045    acc=0.740    acc_teach=0.742    acc_dist=0.744
+Epoch 96/100 (step 218000) 	lr=1.9e-05 	 t=63s  	 loss=2.346	 val_loss=3.035    acc=0.744    acc_teach=0.746    acc_dist=0.748
+Epoch 97/100 (step 220000) 	lr=1.6e-05 	 t=63s  	 loss=2.345	 val_loss=3.038    acc=0.743    acc_teach=0.744    acc_dist=0.746
+Epoch 98/100 (step 222000) 	lr=1.2e-05 	 t=64s  	 loss=2.342	 val_loss=3.038    acc=0.743    acc_teach=0.744    acc_dist=0.747
+Epoch 98/100 (step 224000) 	lr=8.7e-06 	 t=62s  	 loss=2.339	 val_loss=3.032    acc=0.745    acc_teach=0.745    acc_dist=0.747
+Epoch 99/100 (step 226000) 	lr=5.3e-06 	 t=63s  	 loss=2.337	 val_loss=3.029    acc=0.747    acc_teach=0.747    acc_dist=0.748
+Epoch 100/100 (step 228808) 	lr=3.5e-07 	 t=86s  	 loss=2.337	 val_loss=3.028    acc=0.746    acc_teach=0.746    acc_dist=0.748
+
+ -> Saving weights to ../logs/2023-04-30/7/mlp_bert_3_3.pt
+
+
+
+ -> CV Accuracy : 0.7380
+
+-------------   Fullfit 1 / 1 -------------
+
+    -> Data Preparation
+    -> 94477 training images
+    -> 100 validation images
+    -> 35143010 trainable parameters
+    -> 9819298 distilled parameters
+
+Epoch 01/100 (step 2000) 	lr=8.0e-06 	 t=67s  	 loss=5.458	 val_loss=5.086    acc=0.070
+Epoch 02/100 (step 4000) 	lr=1.6e-05 	 t=62s  	 loss=4.971	 val_loss=4.466    acc=0.140
+Epoch 03/100 (step 6000) 	lr=2.4e-05 	 t=62s  	 loss=4.539	 val_loss=4.149    acc=0.250
+Epoch 03/100 (step 8000) 	lr=3.2e-05 	 t=69s  	 loss=4.235	 val_loss=3.911    acc=0.260
+Epoch 04/100 (step 10000) 	lr=4.1e-05 	 t=70s  	 loss=4.032	 val_loss=3.706    acc=0.350
+Epoch 05/100 (step 12000) 	lr=4.9e-05 	 t=69s  	 loss=3.856	 val_loss=3.314    acc=0.500
+Epoch 05/100 (step 14000) 	lr=5.7e-05 	 t=62s  	 loss=3.727	 val_loss=3.183    acc=0.530
+Epoch 06/100 (step 16000) 	lr=6.5e-05 	 t=65s  	 loss=3.653	 val_loss=3.236    acc=0.500
+Epoch 07/100 (step 18000) 	lr=7.3e-05 	 t=65s  	 loss=3.576	 val_loss=3.187    acc=0.540
+Epoch 07/100 (step 20000) 	lr=8.1e-05 	 t=63s  	 loss=3.520	 val_loss=3.029    acc=0.570
+Epoch 08/100 (step 22000) 	lr=8.9e-05 	 t=65s  	 loss=3.480	 val_loss=2.907    acc=0.660
+Epoch 09/100 (step 24000) 	lr=9.7e-05 	 t=65s  	 loss=3.426	 val_loss=2.896    acc=0.640
+Epoch 09/100 (step 26000) 	lr=1.1e-04 	 t=63s  	 loss=3.395	 val_loss=2.982    acc=0.570
+Epoch 10/100 (step 28000) 	lr=1.1e-04 	 t=65s  	 loss=3.387	 val_loss=2.847    acc=0.710
+Epoch 11/100 (step 30000) 	lr=1.2e-04 	 t=64s  	 loss=3.366	 val_loss=2.780    acc=0.710
+Epoch 11/100 (step 32000) 	lr=1.3e-04 	 t=63s  	 loss=3.345	 val_loss=2.769    acc=0.720
+Epoch 12/100 (step 34000) 	lr=1.4e-04 	 t=64s  	 loss=3.340	 val_loss=2.771    acc=0.710
+Epoch 13/100 (step 36000) 	lr=1.5e-04 	 t=63s  	 loss=3.332	 val_loss=2.797    acc=0.660
+Epoch 13/100 (step 38000) 	lr=1.5e-04 	 t=62s  	 loss=3.341	 val_loss=2.685    acc=0.780
+Epoch 14/100 (step 40000) 	lr=1.6e-04 	 t=64s  	 loss=3.338	 val_loss=2.740    acc=0.710
+Epoch 15/100 (step 42000) 	lr=1.7e-04 	 t=64s  	 loss=3.306	 val_loss=2.768    acc=0.680
+Epoch 15/100 (step 44000) 	lr=1.8e-04 	 t=63s  	 loss=3.370	 val_loss=2.762    acc=0.680
+Epoch 16/100 (step 46000) 	lr=1.9e-04 	 t=64s  	 loss=3.378	 val_loss=2.769    acc=0.680
+Epoch 17/100 (step 48000) 	lr=1.9e-04 	 t=65s  	 loss=3.378	 val_loss=2.705    acc=0.730
+Epoch 17/100 (step 50000) 	lr=2.0e-04 	 t=62s  	 loss=3.413	 val_loss=2.763    acc=0.710
+Epoch 18/100 (step 52000) 	lr=2.1e-04 	 t=62s  	 loss=3.434	 val_loss=2.728    acc=0.690
+Epoch 19/100 (step 54000) 	lr=2.2e-04 	 t=62s  	 loss=3.449	 val_loss=2.684    acc=0.750
+Epoch 19/100 (step 56000) 	lr=2.3e-04 	 t=61s  	 loss=3.479	 val_loss=2.664    acc=0.780
+Epoch 20/100 (step 58000) 	lr=2.4e-04 	 t=62s  	 loss=3.489	 val_loss=2.660    acc=0.750
+Epoch 21/100 (step 60000) 	lr=2.4e-04 	 t=62s  	 loss=3.532	 val_loss=2.746    acc=0.680
+Epoch 21/100 (step 62000) 	lr=2.5e-04 	 t=60s  	 loss=3.545	 val_loss=2.800    acc=0.700
+Epoch 22/100 (step 64000) 	lr=2.6e-04 	 t=63s  	 loss=3.530	 val_loss=2.760    acc=0.690
+Epoch 23/100 (step 66000) 	lr=2.7e-04 	 t=63s  	 loss=3.563	 val_loss=2.745    acc=0.680
+Epoch 24/100 (step 68000) 	lr=2.8e-04 	 t=62s  	 loss=3.595	 val_loss=2.705    acc=0.750
+Epoch 24/100 (step 70000) 	lr=2.8e-04 	 t=61s  	 loss=3.587	 val_loss=2.750    acc=0.710
+Epoch 25/100 (step 72000) 	lr=2.9e-04 	 t=62s  	 loss=3.574	 val_loss=2.705    acc=0.690
+Epoch 26/100 (step 74000) 	lr=3.0e-04 	 t=62s  	 loss=3.584	 val_loss=2.746    acc=0.670
+Epoch 26/100 (step 76000) 	lr=3.0e-04 	 t=61s  	 loss=3.567	 val_loss=2.706    acc=0.710
+Epoch 27/100 (step 78000) 	lr=2.9e-04 	 t=62s  	 loss=3.543	 val_loss=2.704    acc=0.750
+Epoch 28/100 (step 80000) 	lr=2.9e-04 	 t=62s  	 loss=3.504	 val_loss=2.641    acc=0.750
+Epoch 28/100 (step 82000) 	lr=2.9e-04 	 t=61s  	 loss=3.483	 val_loss=2.626    acc=0.750
+Epoch 29/100 (step 84000) 	lr=2.9e-04 	 t=62s  	 loss=3.472	 val_loss=2.639    acc=0.700
+Epoch 30/100 (step 86000) 	lr=2.8e-04 	 t=62s  	 loss=3.447	 val_loss=2.669    acc=0.760
+Epoch 30/100 (step 88000) 	lr=2.8e-04 	 t=61s  	 loss=3.449	 val_loss=2.657    acc=0.780
+Epoch 31/100 (step 90000) 	lr=2.8e-04 	 t=63s  	 loss=3.410	 val_loss=2.621    acc=0.760
+Epoch 32/100 (step 92000) 	lr=2.8e-04 	 t=62s  	 loss=3.393	 val_loss=2.674    acc=0.740
+Epoch 32/100 (step 94000) 	lr=2.7e-04 	 t=61s  	 loss=3.451	 val_loss=2.646    acc=0.740
+Epoch 33/100 (step 96000) 	lr=2.7e-04 	 t=62s  	 loss=3.417	 val_loss=2.592    acc=0.770
+Epoch 34/100 (step 98000) 	lr=2.7e-04 	 t=62s  	 loss=3.392	 val_loss=2.602    acc=0.720
+Epoch 34/100 (step 100000) 	lr=2.6e-04 	 t=61s  	 loss=3.356	 val_loss=2.620    acc=0.740
+Epoch 35/100 (step 102000) 	lr=2.6e-04 	 t=62s  	 loss=3.351	 val_loss=2.573    acc=0.760
+Epoch 36/100 (step 104000) 	lr=2.6e-04 	 t=62s  	 loss=3.322	 val_loss=2.596    acc=0.800
+Epoch 36/100 (step 106000) 	lr=2.6e-04 	 t=61s  	 loss=3.336	 val_loss=2.588    acc=0.800
+Epoch 37/100 (step 108000) 	lr=2.5e-04 	 t=62s  	 loss=3.317	 val_loss=2.586    acc=0.750
+Epoch 38/100 (step 110000) 	lr=2.5e-04 	 t=62s  	 loss=3.292	 val_loss=2.567    acc=0.780
+Epoch 38/100 (step 112000) 	lr=2.5e-04 	 t=61s  	 loss=3.316	 val_loss=2.591    acc=0.750
+Epoch 39/100 (step 114000) 	lr=2.5e-04 	 t=62s  	 loss=3.298	 val_loss=2.587    acc=0.740
+Epoch 40/100 (step 116000) 	lr=2.4e-04 	 t=62s  	 loss=3.309	 val_loss=2.617    acc=0.770
+Epoch 40/100 (step 118000) 	lr=2.4e-04 	 t=61s  	 loss=3.264	 val_loss=2.583    acc=0.760
+Epoch 41/100 (step 120000) 	lr=2.4e-04 	 t=63s  	 loss=3.264	 val_loss=2.548    acc=0.780
+Epoch 42/100 (step 122000) 	lr=2.3e-04 	 t=62s  	 loss=3.236	 val_loss=2.583    acc=0.740
+Epoch 43/100 (step 124000) 	lr=2.3e-04 	 t=62s  	 loss=3.241	 val_loss=2.543    acc=0.790
+Epoch 43/100 (step 126000) 	lr=2.3e-04 	 t=61s  	 loss=3.240	 val_loss=2.559    acc=0.810
+Epoch 44/100 (step 128000) 	lr=2.3e-04 	 t=63s  	 loss=3.234	 val_loss=2.535    acc=0.800
+Epoch 45/100 (step 130000) 	lr=2.2e-04 	 t=62s  	 loss=3.228	 val_loss=2.555    acc=0.780
+Epoch 45/100 (step 132000) 	lr=2.2e-04 	 t=61s  	 loss=3.211	 val_loss=2.540    acc=0.800
+Epoch 46/100 (step 134000) 	lr=2.2e-04 	 t=62s  	 loss=3.189	 val_loss=2.530    acc=0.790
+Epoch 47/100 (step 136000) 	lr=2.2e-04 	 t=63s  	 loss=3.194	 val_loss=2.530    acc=0.770
+Epoch 47/100 (step 138000) 	lr=2.1e-04 	 t=61s  	 loss=3.166	 val_loss=2.542    acc=0.810
+Epoch 48/100 (step 140000) 	lr=2.1e-04 	 t=62s  	 loss=3.143	 val_loss=2.525    acc=0.800
+Epoch 49/100 (step 142000) 	lr=2.1e-04 	 t=62s  	 loss=3.176	 val_loss=2.534    acc=0.760
+Epoch 49/100 (step 144000) 	lr=2.1e-04 	 t=61s  	 loss=3.165	 val_loss=2.516    acc=0.800
+Epoch 50/100 (step 146000) 	lr=2.0e-04 	 t=66s  	 loss=2.887	 val_loss=2.550    acc=0.840
+Epoch 51/100 (step 148000) 	lr=2.0e-04 	 t=62s  	 loss=2.768	 val_loss=2.520    acc=0.820    acc_teach=0.850    acc_dist=0.790
+Epoch 51/100 (step 150000) 	lr=2.0e-04 	 t=59s  	 loss=2.767	 val_loss=2.542    acc=0.830    acc_teach=0.840    acc_dist=0.860
+Epoch 52/100 (step 152000) 	lr=1.9e-04 	 t=60s  	 loss=2.772	 val_loss=2.553    acc=0.840    acc_teach=0.840    acc_dist=0.850
+Epoch 53/100 (step 154000) 	lr=1.9e-04 	 t=60s  	 loss=2.735	 val_loss=2.511    acc=0.830    acc_teach=0.850    acc_dist=0.830
+Epoch 53/100 (step 156000) 	lr=1.9e-04 	 t=59s  	 loss=2.765	 val_loss=2.529    acc=0.810    acc_teach=0.830    acc_dist=0.850
+Epoch 54/100 (step 158000) 	lr=1.9e-04 	 t=60s  	 loss=2.773	 val_loss=2.559    acc=0.800    acc_teach=0.820    acc_dist=0.850
+Epoch 55/100 (step 160000) 	lr=1.8e-04 	 t=60s  	 loss=2.750	 val_loss=2.536    acc=0.830    acc_teach=0.830    acc_dist=0.840
+Epoch 55/100 (step 162000) 	lr=1.8e-04 	 t=59s  	 loss=2.751	 val_loss=2.511    acc=0.850    acc_teach=0.820    acc_dist=0.830
+Epoch 56/100 (step 164000) 	lr=1.8e-04 	 t=60s  	 loss=2.704	 val_loss=2.518    acc=0.830    acc_teach=0.820    acc_dist=0.850
+Epoch 57/100 (step 166000) 	lr=1.8e-04 	 t=60s  	 loss=2.701	 val_loss=2.535    acc=0.830    acc_teach=0.840    acc_dist=0.800
+Epoch 57/100 (step 168000) 	lr=1.7e-04 	 t=59s  	 loss=2.699	 val_loss=2.501    acc=0.810    acc_teach=0.840    acc_dist=0.840
+Epoch 58/100 (step 170000) 	lr=1.7e-04 	 t=60s  	 loss=2.701	 val_loss=2.527    acc=0.820    acc_teach=0.840    acc_dist=0.840
+Epoch 59/100 (step 172000) 	lr=1.7e-04 	 t=59s  	 loss=2.680	 val_loss=2.525    acc=0.840    acc_teach=0.840    acc_dist=0.850
+Epoch 59/100 (step 174000) 	lr=1.6e-04 	 t=58s  	 loss=2.655	 val_loss=2.509    acc=0.830    acc_teach=0.850    acc_dist=0.870
+Epoch 60/100 (step 176000) 	lr=1.6e-04 	 t=60s  	 loss=2.697	 val_loss=2.518    acc=0.820    acc_teach=0.830    acc_dist=0.850
+Epoch 61/100 (step 178000) 	lr=1.6e-04 	 t=60s  	 loss=2.678	 val_loss=2.524    acc=0.810    acc_teach=0.840    acc_dist=0.860
+Epoch 61/100 (step 180000) 	lr=1.6e-04 	 t=58s  	 loss=2.688	 val_loss=2.495    acc=0.840    acc_teach=0.830    acc_dist=0.830
+Epoch 62/100 (step 182000) 	lr=1.5e-04 	 t=60s  	 loss=2.662	 val_loss=2.498    acc=0.830    acc_teach=0.840    acc_dist=0.870
+Epoch 63/100 (step 184000) 	lr=1.5e-04 	 t=60s  	 loss=2.638	 val_loss=2.477    acc=0.850    acc_teach=0.850    acc_dist=0.870
+Epoch 64/100 (step 186000) 	lr=1.5e-04 	 t=60s  	 loss=2.621	 val_loss=2.496    acc=0.830    acc_teach=0.840    acc_dist=0.860
+Epoch 64/100 (step 188000) 	lr=1.5e-04 	 t=59s  	 loss=2.605	 val_loss=2.491    acc=0.840    acc_teach=0.850    acc_dist=0.880
+Epoch 65/100 (step 190000) 	lr=1.4e-04 	 t=59s  	 loss=2.645	 val_loss=2.488    acc=0.860    acc_teach=0.840    acc_dist=0.880
+Epoch 66/100 (step 192000) 	lr=1.4e-04 	 t=60s  	 loss=2.597	 val_loss=2.474    acc=0.870    acc_teach=0.850    acc_dist=0.870
+Epoch 66/100 (step 194000) 	lr=1.4e-04 	 t=59s  	 loss=2.593	 val_loss=2.493    acc=0.830    acc_teach=0.850    acc_dist=0.890
+Epoch 67/100 (step 196000) 	lr=1.3e-04 	 t=60s  	 loss=2.610	 val_loss=2.458    acc=0.870    acc_teach=0.860    acc_dist=0.850
+Epoch 68/100 (step 198000) 	lr=1.3e-04 	 t=60s  	 loss=2.613	 val_loss=2.458    acc=0.870    acc_teach=0.860    acc_dist=0.870
+Epoch 68/100 (step 200000) 	lr=1.3e-04 	 t=59s  	 loss=2.577	 val_loss=2.465    acc=0.850    acc_teach=0.850    acc_dist=0.870
+Epoch 69/100 (step 202000) 	lr=1.3e-04 	 t=60s  	 loss=2.579	 val_loss=2.460    acc=0.850    acc_teach=0.870    acc_dist=0.870
+Epoch 70/100 (step 204000) 	lr=1.2e-04 	 t=60s  	 loss=2.566	 val_loss=2.478    acc=0.840    acc_teach=0.850    acc_dist=0.880
+Epoch 70/100 (step 206000) 	lr=1.2e-04 	 t=59s  	 loss=2.560	 val_loss=2.481    acc=0.830    acc_teach=0.850    acc_dist=0.860
+Epoch 71/100 (step 208000) 	lr=1.2e-04 	 t=59s  	 loss=2.548	 val_loss=2.470    acc=0.850    acc_teach=0.870    acc_dist=0.850
+Epoch 72/100 (step 210000) 	lr=1.2e-04 	 t=60s  	 loss=2.551	 val_loss=2.473    acc=0.860    acc_teach=0.860    acc_dist=0.860
+Epoch 72/100 (step 212000) 	lr=1.1e-04 	 t=59s  	 loss=2.520	 val_loss=2.469    acc=0.870    acc_teach=0.860    acc_dist=0.880
+Epoch 73/100 (step 214000) 	lr=1.1e-04 	 t=60s  	 loss=2.533	 val_loss=2.470    acc=0.850    acc_teach=0.860    acc_dist=0.870
+Epoch 74/100 (step 216000) 	lr=1.1e-04 	 t=59s  	 loss=2.525	 val_loss=2.454    acc=0.850    acc_teach=0.860    acc_dist=0.860
+Epoch 74/100 (step 218000) 	lr=1.0e-04 	 t=59s  	 loss=2.518	 val_loss=2.455    acc=0.880    acc_teach=0.870    acc_dist=0.880
+Epoch 75/100 (step 220000) 	lr=1.0e-04 	 t=60s  	 loss=2.508	 val_loss=2.463    acc=0.880    acc_teach=0.880    acc_dist=0.900
+Epoch 76/100 (step 222000) 	lr=9.9e-05 	 t=60s  	 loss=2.490	 val_loss=2.456    acc=0.860    acc_teach=0.860    acc_dist=0.860
+Epoch 76/100 (step 224000) 	lr=9.7e-05 	 t=58s  	 loss=2.516	 val_loss=2.454    acc=0.860    acc_teach=0.880    acc_dist=0.850
+Epoch 77/100 (step 226000) 	lr=9.4e-05 	 t=60s  	 loss=2.493	 val_loss=2.442    acc=0.880    acc_teach=0.880    acc_dist=0.880
+Epoch 78/100 (step 228000) 	lr=9.1e-05 	 t=59s  	 loss=2.487	 val_loss=2.444    acc=0.870    acc_teach=0.870    acc_dist=0.860
+Epoch 78/100 (step 230000) 	lr=8.9e-05 	 t=59s  	 loss=2.480	 val_loss=2.436    acc=0.860    acc_teach=0.860    acc_dist=0.870
+Epoch 79/100 (step 232000) 	lr=8.6e-05 	 t=59s  	 loss=2.471	 val_loss=2.470    acc=0.840    acc_teach=0.860    acc_dist=0.860
+Epoch 80/100 (step 234000) 	lr=8.3e-05 	 t=60s  	 loss=2.460	 val_loss=2.450    acc=0.860    acc_teach=0.860    acc_dist=0.890
+Epoch 80/100 (step 236000) 	lr=8.1e-05 	 t=59s  	 loss=2.461	 val_loss=2.426    acc=0.880    acc_teach=0.880    acc_dist=0.880
+Epoch 81/100 (step 238000) 	lr=7.8e-05 	 t=60s  	 loss=2.441	 val_loss=2.432    acc=0.890    acc_teach=0.880    acc_dist=0.880
+Epoch 82/100 (step 240000) 	lr=7.5e-05 	 t=60s  	 loss=2.441	 val_loss=2.441    acc=0.880    acc_teach=0.890    acc_dist=0.900
+Epoch 82/100 (step 242000) 	lr=7.2e-05 	 t=58s  	 loss=2.453	 val_loss=2.430    acc=0.870    acc_teach=0.880    acc_dist=0.890
+Epoch 83/100 (step 244000) 	lr=7.0e-05 	 t=60s  	 loss=2.436	 val_loss=2.417    acc=0.890    acc_teach=0.880    acc_dist=0.890
+Epoch 84/100 (step 246000) 	lr=6.7e-05 	 t=60s  	 loss=2.431	 val_loss=2.417    acc=0.890    acc_teach=0.900    acc_dist=0.890
+Epoch 85/100 (step 248000) 	lr=6.4e-05 	 t=59s  	 loss=2.427	 val_loss=2.414    acc=0.870    acc_teach=0.850    acc_dist=0.880
+Epoch 85/100 (step 250000) 	lr=6.2e-05 	 t=59s  	 loss=2.426	 val_loss=2.406    acc=0.880    acc_teach=0.870    acc_dist=0.910
+Epoch 86/100 (step 252000) 	lr=5.9e-05 	 t=59s  	 loss=2.417	 val_loss=2.415    acc=0.900    acc_teach=0.900    acc_dist=0.910
+Epoch 87/100 (step 254000) 	lr=5.6e-05 	 t=59s  	 loss=2.405	 val_loss=2.426    acc=0.890    acc_teach=0.860    acc_dist=0.910
+Epoch 87/100 (step 256000) 	lr=5.3e-05 	 t=59s  	 loss=2.401	 val_loss=2.427    acc=0.860    acc_teach=0.860    acc_dist=0.890
+Epoch 88/100 (step 258000) 	lr=5.1e-05 	 t=60s  	 loss=2.393	 val_loss=2.419    acc=0.870    acc_teach=0.850    acc_dist=0.890
+Epoch 89/100 (step 260000) 	lr=4.8e-05 	 t=60s  	 loss=2.389	 val_loss=2.408    acc=0.870    acc_teach=0.870    acc_dist=0.890
+Epoch 89/100 (step 262000) 	lr=4.5e-05 	 t=59s  	 loss=2.384	 val_loss=2.403    acc=0.860    acc_teach=0.860    acc_dist=0.880
+Epoch 90/100 (step 264000) 	lr=4.3e-05 	 t=60s  	 loss=2.376	 val_loss=2.404    acc=0.880    acc_teach=0.880    acc_dist=0.880
+Epoch 91/100 (step 266000) 	lr=4.0e-05 	 t=60s  	 loss=2.373	 val_loss=2.403    acc=0.890    acc_teach=0.890    acc_dist=0.900
+Epoch 91/100 (step 268000) 	lr=3.7e-05 	 t=59s  	 loss=2.368	 val_loss=2.404    acc=0.890    acc_teach=0.900    acc_dist=0.890
+Epoch 92/100 (step 270000) 	lr=3.5e-05 	 t=59s  	 loss=2.368	 val_loss=2.416    acc=0.870    acc_teach=0.880    acc_dist=0.880
+Epoch 93/100 (step 272000) 	lr=3.2e-05 	 t=60s  	 loss=2.365	 val_loss=2.403    acc=0.880    acc_teach=0.880    acc_dist=0.880
+Epoch 93/100 (step 274000) 	lr=2.9e-05 	 t=58s  	 loss=2.363	 val_loss=2.411    acc=0.880    acc_teach=0.880    acc_dist=0.880
+Epoch 94/100 (step 276000) 	lr=2.6e-05 	 t=60s  	 loss=2.360	 val_loss=2.410    acc=0.890    acc_teach=0.890    acc_dist=0.900
+Epoch 95/100 (step 278000) 	lr=2.4e-05 	 t=60s  	 loss=2.358	 val_loss=2.401    acc=0.910    acc_teach=0.900    acc_dist=0.900
+Epoch 95/100 (step 280000) 	lr=2.1e-05 	 t=58s  	 loss=2.355	 val_loss=2.398    acc=0.890    acc_teach=0.900    acc_dist=0.900
+Epoch 96/100 (step 282000) 	lr=1.8e-05 	 t=60s  	 loss=2.351	 val_loss=2.396    acc=0.900    acc_teach=0.900    acc_dist=0.900
+Epoch 97/100 (step 284000) 	lr=1.6e-05 	 t=60s  	 loss=2.351	 val_loss=2.394    acc=0.890    acc_teach=0.890    acc_dist=0.900
+Epoch 97/100 (step 286000) 	lr=1.3e-05 	 t=59s  	 loss=2.348	 val_loss=2.399    acc=0.910    acc_teach=0.910    acc_dist=0.900
+Epoch 98/100 (step 288000) 	lr=1.0e-05 	 t=60s  	 loss=2.345	 val_loss=2.395    acc=0.900    acc_teach=0.900    acc_dist=0.900
+Epoch 99/100 (step 290000) 	lr=7.4e-06 	 t=60s  	 loss=2.342	 val_loss=2.394    acc=0.900    acc_teach=0.900    acc_dist=0.900
+Epoch 99/100 (step 292000) 	lr=4.7e-06 	 t=58s  	 loss=2.342	 val_loss=2.392    acc=0.910    acc_teach=0.910    acc_dist=0.900
+Epoch 100/100 (step 295208) 	lr=3.7e-07 	 t=94s  	 loss=2.341	 val_loss=2.392    acc=0.910    acc_teach=0.910    acc_dist=0.900
+
+ -> Saving weights to ../logs/2023-04-30/7/mlp_bert_3_fullfit_0.pt
+
+
+Shutting down background jobs, please wait a moment...

@@ -71,7 +71,7 @@ Our solution is a 2 model ensemble of a MLP-encoder-frame-transformer model. We 
 
 #### Data preparation
 
-Prepare the data using `Preparation_torch.ipynb`. For our best submissions, we used `max_len=25` and `max_len=80`.
+Prepare the data using `Preparation_torch.ipynb`. For our best submissions, we used `max_len=25` (folder name is `torch_12`) and `max_len=80` (folder name is `torch_18`).
 
 #### Training
 
@@ -81,6 +81,7 @@ You can keep the parameters in the `Config` class as-is. To reproduce our best s
   - `max_len = 25` -> `dense_dim = 512`, `transfo_dim = 1536`, `distill_transfo_dim=768`
   - `max_len = 80` -> `dense_dim = 256`, `transfo_dim = 1024`, `distill_transfo_dim=576`
 
+We provide model configs, weights and predictions in the `logs` folder.
 
 #### Evaluation & inference
 

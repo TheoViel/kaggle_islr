@@ -7,10 +7,10 @@ def accuracy(labels, predictions, beta=1):
 
     Args:
         labels (np array [n]): Labels.
-        predictions (np array [n]): Predictions.
+        predictions (np array [n] or [n x num_classes]): Predictions.
 
     Returns:
-        float: Pfbeta value.
+        float: Accuracy value.
     """
     labels = np.array(labels).squeeze()
     predictions = np.array(predictions).squeeze()

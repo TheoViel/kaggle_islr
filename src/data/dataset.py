@@ -4,18 +4,21 @@ import numpy as np
 from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader
 
-from data.transforms import (
-    augment,
-    normalize,
-    # interpolate,
-    flip,
-    add_missing_hand,
-    # normalize_face,
-)
-# from params import TYPE_MAPPING
+from data.transforms import augment, flip, add_missing_hand
 
 
 def crop_or_pad(data, max_len=100, mode="start"):
+    """
+    Crop or pad the data to a maximum length.
+
+    Args:
+        data (dict): A dictionary containing the data.
+        max_len (int, optional): The maximum length of the data. Defaults to 100.
+        mode (str, optional): The mode for cropping/padding. Options are "start" or "center". Defaults to "start".
+
+    Returns:
+        dict: The cropped or padded data.
+    """
     diff = max_len - data["x"].shape[0]
 
     if diff <= 0:  # Crop
@@ -41,6 +44,16 @@ def crop_or_pad(data, max_len=100, mode="start"):
 
 
 def resize(data, size=50):
+    """
+    Resize the data to a specified size.
+
+    Args:
+        data (dict): A dictionary containing the data.
+        size (int, optional): The desired size of the data. Defaults to 50.
+
+    Returns:
+        dict: The resized data.
+    """
     for k in ["x", "y", "z"]:
         data[k] = torch.nn.functional.interpolate(
             data[k].T.unsqueeze(0), size, mode="linear"
@@ -53,6 +66,15 @@ def resize(data, size=50):
 
 
 def is_left(data):
+    """
+    Check if the signer is left handed.
+
+    Args:
+        data (dict): A dictionary containing the data.
+
+    Returns:
+        bool: True if the signer is left handed, False otherwise.
+    """
     fts = torch.abs(data["x"])
     embed = data["type"][0]
 
@@ -67,9 +89,26 @@ def is_left(data):
 
 class SignDataset(Dataset):
     """
-    Sign torch Dataset.
-    """
+    Custom dataset class for the problem.
 
+    Attributes:
+        df (pandas.DataFrame): DataFrame containing the dataset.
+        max_len (int, optional): Maximum length of the data sequence.
+        aug_strength (int, optional): Augmentation strength.
+        resize_mode (str, optional): Resize mode for the data.
+        train (bool, optional): Flag indicating if the dataset is for training.
+        dist (bool, optional): Flag indicating if the dataset uses distrillation.
+        paths (numpy.ndarray): Array of processed file paths.
+        targets (numpy.ndarray): Array of target labels.
+        buffer (dict): Buffer to store preloaded data batches.
+        buffer_mode (bool): Flag indicating if the buffer is in use.
+
+    Methods:
+        __len__(self): Returns the length of the dataset.
+        fill_buffer(self, tqdm_enabled=False): Fills the buffer with data batches.
+        mix_face(self, data, idx, p=0): Mixes the face data with another sample of the same class.
+        __getitem__(self, idx): Returns the item at the specified index.
+    """
     def __init__(
         self,
         df,
@@ -80,11 +119,15 @@ class SignDataset(Dataset):
         dist=False,
     ):
         """
-        Constructor
+        Constructor.
 
         Args:
-            df (pd DataFrame): DataFrame.
-            transforms (albumentation transforms, optional): Transforms to apply. Defaults to None.
+            df (pandas.DataFrame): DataFrame containing the dataset.
+            max_len (int, optional): Maximum length of the data sequence. Defaults to None.
+            aug_strength (int, optional): Augmentation strength. Defaults to 0.
+            resize_mode (str, optional): Resize mode for the data. Defaults to "pad".
+            train (bool, optional): Flag indicating if the dataset is for training. Defaults to False.
+            dist (bool, optional): Flag indicating if the dataset uses distillation. Defaults to False.
         """
         self.df = df
         self.max_len = max_len
@@ -98,12 +141,25 @@ class SignDataset(Dataset):
 
         self.buffer = {}
         self.buffer_mode = False
-        self.lens = {}
 
     def __len__(self):
+        """
+        Returns the length of the dataset.
+
+        Returns:
+            int: Length of the dataset.
+
+        """
         return len(self.paths)
 
     def fill_buffer(self, tqdm_enabled=False):
+        """
+        Fills the buffer with data.
+
+        Args:
+            tqdm_enabled (bool, optional): Flag indicating if tqdm progress bar should be displayed. Defaults to False.
+
+        """
         self.buffer_mode = True
         loader = DataLoader(
             self,
@@ -121,6 +177,17 @@ class SignDataset(Dataset):
         self.buffer_mode = False
 
     def mix_face(self, data, idx, p=0):
+        """
+        Mixes the face data with another sample of the same class.
+
+        Args:
+            data (dict): Dictionary containing the data.
+            idx (int): Index of the sample to mix with.
+            p (float, optional): Probability of mixing the face data. Defaults to 0.
+
+        Returns:
+            dict: Mixed face data.
+        """
         if np.random.random() > p:
             return data
 
@@ -154,10 +221,6 @@ class SignDataset(Dataset):
         other_data = resize(other_data, data["x"].size(0))
 
         # Replace face
-#         ids = torch.isin(data["type"][0], torch.tensor([4]))
-#         replaced = torch.isin(data["type"], torch.tensor([4]))
-#         ids = torch.isin(data["type"][0], torch.tensor([3, 6, 7, 8, 9, 10, 11]))
-#         replaced = torch.isin(data["type"], torch.tensor([3, 6, 7, 8, 9, 10, 11]))
         ids = torch.isin(data["type"][0], torch.tensor([3, 4, 6]))
         replaced = torch.isin(data["type"], torch.tensor([3, 4, 6]))
 
@@ -185,15 +248,15 @@ class SignDataset(Dataset):
 
     def __getitem__(self, idx):
         """
-        Item accessor.
+        Returns the item at the specified index.
 
         Args:
             idx (int): Index.
 
         Returns:
-            torch tensor [C x H x W x C]: Image.
-            torch tensor [1]: Label.
-            torch tensor [1]: Aux label.
+            data (dict): A dictionary containing the augmented data.
+            data_mt (dict): A dictionary containing the augmented data for mean teacher.
+            data_dist (dict): A dictionary containing the augmented data for distillation.
         """
         try:
             frames = self.buffer[idx]
@@ -203,9 +266,6 @@ class SignDataset(Dataset):
 
         if self.buffer_mode:
             return frames
-
-        length = len(frames)
-        self.lens[idx] = length
 
         landmark_embed = np.arange(frames.shape[-1])[None] + 1
         landmark_embed = np.repeat(landmark_embed, frames.shape[0], axis=0)
@@ -243,10 +303,6 @@ class SignDataset(Dataset):
             if self.dist:
                 data_dist = augment(data_dist, aug_strength=self.aug_strength)
                 data_dist["mask"] = torch.ones(data_dist["x"].size())
-
-#                 data_dist = normalize(data_dist)
-#             data_mt = normalize(data_mt)
-#         data = normalize(data)
 
         data["mask"] = torch.ones(data["x"].size())
         

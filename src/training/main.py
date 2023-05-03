@@ -25,10 +25,10 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
         df_val (pandas dataframe): Validation metadata.
         fold (int): Selected fold.
         log_folder (None or str, optional): Folder to logs results to. Defaults to None.
-        run (None or Nepture run): Nepture run. Defaults to None.
+        run (neptune.Run): Nepture run. Defaults to None.
 
     Returns:
-        np array [len(df_train) x num_classes]: Validation predictions.
+        np array [len(df_val) x num_classes]: Validation predictions.
     """
     if config.local_rank == 0:
         print("    -> Data Preparation")
@@ -98,20 +98,6 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
 
     model_distilled = None
     if config.mt_config['distill']:
-#         if config.transfo_dim == 1024:
-#             distill_transfo_dim = 576  # 768
-#             distill_dense_dim = 192
-#             distill_transfo_layers = 3
-#         elif config.transfo_dim == 768:
-#             distill_transfo_dim = 576  # 512
-#             distill_dense_dim = 192
-#             distill_transfo_layers = 3  # 2
-#         else:
-        distill_transfo_dim = 576  # 768
-        distill_dense_dim = 192
-        distill_transfo_layers = 3
-#             raise NotImplementedError
-
         model_distilled = define_model(
             config.name,
             pretrained_weights=pretrained_weights,
@@ -229,18 +215,6 @@ def k_fold(config, df, df_extra=None, log_folder=None, run=None):
         folds = pd.read_csv(config.folds_file)
         df = df.merge(folds, how="left", on=["participant_id", "sequence_id"])
 
-    # Train oof for confidence
-    #     oof = np.load("../logs/2023-04-11/27/pred_oof_train.npy")
-    oof = np.stack(
-        [np.load("../logs/2023-04-09/2/pred_oof.npy") for _ in range(config.k)], 0
-    )  # LEAKY ?
-    oof_ = [oof[:, i, j] for i, j in enumerate(df["target"].values)]
-    oof_ = np.stack(oof_).T
-    for i in range(len(oof_)):
-        df[f"pred_{i}"] = oof_[i]
-        
-#     df['lens'] = np.load('../output/lens.npy')
-
     pred_oof = np.zeros((len(df), config.num_classes))
     for fold in range(config.k):
         if fold in config.selected_folds:
@@ -257,22 +231,9 @@ def k_fold(config, df, df_extra=None, log_folder=None, run=None):
 
             df_train = df.iloc[train_idx].reset_index(drop=True)
             df_val = df.iloc[val_idx].reset_index(drop=True)
-            
-#             df_train = df_train[df_train['lens'] <= 5].reset_index(drop=True)
 
             if df_extra is not None:
                 df_train = pd.concat([df_train, df_extra], ignore_index=True)
-
-            # df_train = df_train[
-            #     df_train[f'pred_{fold}'] > np.percentile(df_train[f'pred_{fold}'], 10)
-            # ].reset_index(drop=True)
-
-#             df_train = df_train[df_train['participant_id'] != 29302].reset_index(drop=True)
-            # two_hands = np.concatenate([
-            #     np.load('../output/two_hands_others.npy'),
-            #     np.load('../output/two_hands_29302.npy')
-            # ])
-            # df_train = df_train[~df_train['sequence_id'].isin(two_hands)].reset_index(drop=True)
 
             pred_val = train(
                 config, df_train, df_val, fold, log_folder=log_folder, run=run

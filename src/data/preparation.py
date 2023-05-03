@@ -1,18 +1,20 @@
 import json
 import numpy as np
 import pandas as pd
-
+from sklearn.model_selection import StratifiedGroupKFold
 from params import DATA_PATH
 
 
 def prepare_folds(k):
-    from sklearn.model_selection import StratifiedGroupKFold
+    """
+    Prepares K-fold cross-validation splits grouped by participant ID and stratified on sign.
 
-    K = k
-
+    Args:
+        k (int): The number of folds for cross-validation.
+    """
     df = pd.read_csv(DATA_PATH + "train.csv")
 
-    sgkf = StratifiedGroupKFold(n_splits=K, shuffle=True, random_state=42)
+    sgkf = StratifiedGroupKFold(n_splits=k, shuffle=True, random_state=42)
     splits = sgkf.split(df, y=df["sign"], groups=df["participant_id"])
 
     df["fold"] = -1
@@ -20,10 +22,20 @@ def prepare_folds(k):
         df.loc[val_idx, "fold"] = i
 
     df_folds = df[["participant_id", "sequence_id", "fold"]]
-    df_folds.to_csv(f"../input/folds_{K}.csv", index=False)
+    df_folds.to_csv(f"../input/folds_{k}.csv", index=False)
 
 
 def prepare_data(data_path="../input/", processed_folder=""):
+    """
+    Loads and preprocesses the training data.
+
+    Args:
+        data_path (str): Path to the data folder. Defaults to "../input/".
+        processed_folder (str): Folder containing the processed data. Defaults to "".
+
+    Returns:
+        pd.DataFrame: The preprocessed training data.
+    """
     df = pd.read_csv(data_path + "train.csv")
     classes = json.load(open(data_path + "sign_to_prediction_index_map.json", "r"))
 
@@ -40,19 +52,4 @@ def prepare_data(data_path="../input/", processed_folder=""):
     )
     
     df['len'] = np.load('../output/raw_lens.npy')
-
     return df
-
-
-def prepare_wsasl(data_path="../input/", processed_folder=""):
-    df_wsasl = pd.read_csv(data_path + "df_wsasl.csv")
-    classes = json.load(open(data_path + "sign_to_prediction_index_map.json", "r"))
-
-    df_wsasl["target"] = df_wsasl["sign"].map(classes)
-    df_wsasl = df_wsasl.dropna(axis=0)
-
-    df_wsasl["processed_path"] = (
-        data_path + processed_folder + df_wsasl["processed_path"]
-    )
-
-    return df_wsasl

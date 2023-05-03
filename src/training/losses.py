@@ -6,13 +6,47 @@ from scipy.special import softmax
 
 
 class ConsistencyLoss(nn.Module):
+    """
+    Consistency loss module for training a student-teacher model.
+
+    Attributes:
+        consistency_weight (float): Weight for the consistency loss.
+        rampup_length (int): Length of the ramp-up period in steps.
+        aux_loss_weight (float): Weight for the auxiliary loss.
+
+    Methods:
+        __init__(self, config): Constructor.
+        sigmoid_rampup(current): Computes the sigmoid ramp-up value based on the current step.
+        get_consistency_weight(epoch): Computes the consistency weight based on the current epoch.
+        forward(student_pred, teacher_pred, step=1, student_pred_aux=None, teacher_pred_aux=None):
+            Computes the consistency loss between student and teacher predictions.
+    """
     def __init__(self, config):
+        """
+        Constructor.
+
+        Args:
+            config (dict): Configuration parameters.
+                - consistency_weight (float): Weight for the consistency loss.
+                - rampup_length (int): Length of the ramp-up period in steps.
+                - aux_loss_weight (float, optional): Weight for the auxiliary loss. Defaults to 0.
+        """
         super().__init__()
         self.consistency_weight = config["consistency_weight"]
         self.rampup_length = config["rampup_length"]  # rampup steps
         self.aux_loss_weight = config.get("aux_loss_weight", 0)
 
     def sigmoid_rampup(self, current):
+        """
+        Computes the sigmoid ramp-up value based on the current step.
+
+        Args:
+            current (float): Current step.
+
+        Returns:
+            float: Sigmoid ramp-up value.
+
+        """
         if self.rampup_length == 0:
             return 1.0
         current = np.clip(current, 0.0, self.rampup_length)
@@ -20,11 +54,37 @@ class ConsistencyLoss(nn.Module):
         return float(np.exp(-5.0 * phase * phase))
 
     def get_consistency_weight(self, epoch):
+        """
+        Computes the consistency weight based on the current epoch.
+
+        Args:
+            epoch (int): Current epoch.
+
+        Returns:
+            float: Consistency weight.
+
+        """
         return self.consistency_weight * self.sigmoid_rampup(epoch)
 
     def forward(
         self, student_pred, teacher_pred, step=1, student_pred_aux=None, teacher_pred_aux=None
     ):
+        """
+        Computes the consistency loss between student and teacher predictions.
+
+        Args:
+            student_pred (torch.Tensor): Predictions from the student model.
+            teacher_pred (torch.Tensor): Predictions from the teacher model.
+            step (int, optional): Current step. Defaults to 1.
+            student_pred_aux (None or list of torch.Tensor, optional): Auxiliary predictions from the student model.
+                Defaults to None.
+            teacher_pred_aux (None or list of torch.Tensor, optional): Auxiliary predictions from the teacher model.
+                Defaults to None.
+
+        Returns:
+            torch.Tensor: Consistency loss.
+
+        """
         w = self.get_consistency_weight(step)
         
         student_pred = student_pred.softmax(-1)
@@ -53,38 +113,36 @@ class ConsistencyLoss(nn.Module):
 class SmoothCrossEntropyLoss(nn.Module):
     """
     Cross-entropy loss with label smoothing.
-    """
+    
+    Attributes:
+        eps (float): Smoothing value.
+    
+    Methods:
+        __init__(self, eps=0.0, device="cuda"): Constructor.
+        forward(self, inputs, targets): Computes the loss.
 
-    def __init__(self, eps=0.0, use_embed=False, device="cuda"):
+    """
+    def __init__(self, eps=0.0, device="cuda"):
         """
         Constructor.
+
         Args:
             eps (float, optional): Smoothing value. Defaults to 0.
+            device (str, optional): Device to use for computations. Defaults to "cuda".
         """
         super(SmoothCrossEntropyLoss, self).__init__()
         self.eps = eps
-        
-        if use_embed:
-            embeds = np.load("../input/fasttext_embeds.npy")
-            embeds = embeds / np.sqrt((embeds * embeds).mean(-1, keepdims=True))
-
-            sims = (embeds[None] * embeds[:, None]).sum(-1)
-            T = 50
-            sims /= T
-            sims -= 100000 * np.eye(len(embeds))
-
-            self.sims = torch.from_numpy(softmax(sims, -1)).to(device)
-        else:
-            self.sims = None
 
     def forward(self, inputs, targets):
         """
         Computes the loss.
+
         Args:
-            inputs (torch tensor [bs x n]): Predictions.
-            targets (torch tensor [bs x n] or [bs]): Targets.
+            inputs (torch.Tensor): Predictions of shape [bs x n].
+            targets (torch.Tensor): Targets of shape [bs x n] or [bs].
+
         Returns:
-            torch tensor: Loss values, averaged.
+            torch.Tensor: Loss values, averaged.
         """
         y = targets
         if len(targets.size()) == 1:  # to one hot
@@ -92,22 +150,39 @@ class SmoothCrossEntropyLoss(nn.Module):
 
         if self.eps > 0:
             n_class = inputs.size(1)
-            if self.sims is None:
-                targets = targets * (1 - self.eps) + (1 - targets) * self.eps / (
-                    n_class - 1
-                )
-#                 targets = torch.clamp(targets, self.eps / (n_class - 1), 1 - self.eps)
-            else:
-                targets = targets * (1 - self.eps) + (1 - targets)  * self.eps * self.sims[y]
+            targets = targets * (1 - self.eps) + (1 - targets)  * self.eps * self.sims[y]
 
         loss = -targets * F.log_softmax(inputs, dim=1)
         loss = loss.sum(-1)
-
         return loss
 
 
 class SignLoss(nn.Module):
+    """
+    Loss wrapper for the problem.
+    
+    Attributes:
+        config (dict): Configuration parameters.
+        device (str): Device to use for computations.
+        aux_loss_weight (float): Weight for the auxiliary loss.
+        ousm_k (int): Number of samples to exclude in the OUSM variant. Defaults to 0.
+        eps (float): Smoothing value. Defaults to 0.
+        loss (nn.Module): Loss function.
+        loss_aux (nn.Module): Auxiliary loss function.
+
+    Methods:
+        __init__(self, config, device="cuda"): Constructor.
+        prepare(self, pred, y): Prepares the predictions and targets for loss computation.
+        forward(self, pred, pred_aux, y, y_aux): Computes the loss.
+    """
     def __init__(self, config, device="cuda"):
+        """
+        Constructor.
+
+        Args:
+            config (dict): Configuration parameters.
+            device (str, optional): Device to use for computations. Defaults to "cuda".
+        """
         super().__init__()
         self.config = config
         self.device = device
@@ -120,24 +195,23 @@ class SignLoss(nn.Module):
             self.loss = nn.BCEWithLogitsLoss(reduction="none")
         elif config["name"] == "ce":
             self.loss = SmoothCrossEntropyLoss(
-                eps=self.eps, use_embed=config['use_embed'], device=device
+                eps=self.eps, device=device
             )
         else:
             raise NotImplementedError
 
         self.loss_aux = nn.MSELoss(reduction="none")
-        self.embed = torch.from_numpy(np.load("../output/embed.npy")).to(device)
 
     def prepare(self, pred, y):
         """
-        Prepares the loss inputs.
+        Prepares the predictions and targets for loss computation.
 
         Args:
-            pred (torch tensor  [bs x num_classes]): Predictions.
-            y (torch tensor [bs] or [bs  x num_classes]): Target.
+            pred (torch.Tensor): Predictions.
+            y (torch.Tensor): Targets.
 
         Returns:
-            _type_: _description_
+            Tuple(torch.Tensor, torch.Tensor): Prepared predictions and targets.
         """
         if self.config["name"] in ["ce", "supcon"]:
             y = y.squeeze()
@@ -155,13 +229,13 @@ class SignLoss(nn.Module):
         Computes the loss.
 
         Args:
-            pred (torch tensor  [bs x num_classes]): Predictions.
-            pred_aux (torch tensor [bs x num_classes_aux]): Aux predictions.
-            y (torch tensor [bs] or [bs  x num_classes]): Target.
-            y_aux (torch tensor [bs] or  [bs x num_classes_aux]): Aux target.
+            pred (torch.Tensor): Main predictions.
+            pred_aux (list): Auxiliary predictions.
+            y (torch.Tensor): Main targets.
+            y_aux (list): Auxiliary targets.
 
         Returns:
-            torch tensor: Loss value, averaged.
+            torch.Tensor: Loss value.
         """
         pred, y = self.prepare(pred, y)
 

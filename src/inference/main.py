@@ -9,10 +9,23 @@ from model_zoo.models import define_model
 from utils.logger import Config
 from utils.torch import load_model_weights
 from utils.metrics import accuracy
-from inference.predict import predict, predict_tta
+from inference.predict import predict
 
 
 def uniform_soup(model, weights, device="cpu", by_name=False, weighting="uniform"):
+    """
+    Creates a "soup" model by combining the weights from multiple models.
+
+    Args:
+        model (torch.nn.Module): The base model.
+        weights (list or torch.nn.Module): List of model weights or individual model weight.
+        device (str, optional): Device to load the model on. Defaults to "cpu".
+        by_name (bool, optional): Flag indicating whether to match weights by name. Defaults to False.
+        weighting (str, optional): Type of weighting to apply ("uniform" or "linear"). Defaults to "uniform".
+
+    Returns:
+        torch.nn.Module: The combined "soup" model.
+    """
     if not isinstance(weights, list):
         weights = [weights]
 
@@ -43,11 +56,6 @@ def uniform_soup(model, weights, device="cpu", by_name=False, weighting="uniform
             for k, v in soups.items()
             if len(v) != 0
         }
-#         soups = {
-#             k: (torch.sum(torch.stack(v), axis=0) / len(v)).type(v[0].dtype)
-#             for k, v in soups.items()
-#             if len(v) != 0
-#         }
         model_dict.update(soups)
         model.load_state_dict(model_dict)
 
@@ -58,20 +66,26 @@ def kfold_inference_val(
     df, exp_folder, debug=False, save=True, use_tta=False, use_fp16=False, train=False, use_mt=False, distilled=False, n_soup=0
 ):
     """
-    Main inference function for validation data.
+    Perform k-fold cross-validation for model inference on the validation set.
+
     Args:
-        df (pd DataFrame): Dataframe.
-        exp_folder (str): Experiment folder.
-        debug (bool, optional): Whether to use debug mode. Defaults to False.
-        save (bool, optional): Whether to save predictions. Defaults to True.
-        use_tta (bool, optional): Whether to use TTA. Defaults to False.
-        use_fp16 (bool, optional): Whether to use fp16. Defaults to False.
-        extract_fts (bool, optional): Whether to extract features. Defaults to False.
+        df (pd.DataFrame): DataFrame containing the data.
+        exp_folder (str): Path to the experiment folder.
+        debug (bool, optional): Flag indicating whether to run in debug mode. Defaults to False.
+        save (bool, optional): Flag indicating whether to save the predictions. Defaults to True.
+        use_tta (bool, optional): Flag indicating whether to use test time augmentation. Defaults to False.
+        use_fp16 (bool, optional): Flag indicating whether to use mixed precision inference. Defaults to False.
+        train (bool, optional): Flag indicating whether to perform inference on the training set. Defaults to False.
+        use_mt (bool, optional): Flag indicating whether to use model teacher. Defaults to False.
+        distilled (bool, optional): Flag indicating whether to use distilled model. Defaults to False.
+        n_soup (int, optional): Number of models to use for model soup. Defaults to 0.
+
     Returns:
-        np array [n x n_classes]: Predictions.
-        np array [n x n_classes_aux]: Aux predictions.
+        np.ndarray: Array containing the predicted probabilities for each class.
     """
-    predict_fct = predict_tta if use_tta else predict
+    assert not use_tta, "TTA not implemented"
+    predict_fct = predict  # predict_tta if use_tta else predict
+
     config = Config(json.load(open(exp_folder + "config.json", "r")))
 
     if "fold" not in df.columns:
@@ -128,42 +142,8 @@ def kfold_inference_val(
                 weights = exp_folder + f"{config.name}_distilled_{fold}.pt"
             else:
                 weights = exp_folder + f"{config.name}_{fold}.pt"
-#             print(weights)
+
             model = load_model_weights(model, weights, verbose=1)
-
-#         import torch.nn.utils.prune as prune
-#         to_prune = (
-# #             model.left_hand_mlp[0],
-# #             model.right_hand_mlp[0],
-# #             model.face_mlp[0],
-# #             model.full_mlp[0],
-# #             model.landmark_mlp[0],
-# #             model.frame_transformer_1.layer[0].attention.self.query_proj,
-# #             model.frame_transformer_1.layer[0].attention.self.key_proj,
-# #             model.frame_transformer_1.layer[0].attention.self.value_proj,
-# #             model.frame_transformer_1.layer[0].attention.output.dense,
-# #             model.frame_transformer_1.layer[0].intermediate.dense,
-# #             model.frame_transformer_1.layer[0].output.dense,
-
-# #             model.frame_transformer_2.layer[0].attention.self.query_proj,
-# #             model.frame_transformer_2.layer[0].attention.self.key_proj,
-# #             model.frame_transformer_2.layer[0].attention.self.value_proj,
-# #             model.frame_transformer_2.layer[0].attention.output.dense,
-# #             model.frame_transformer_2.layer[0].intermediate.dense,
-# #             model.frame_transformer_2.layer[0].output.dense,
-
-# #             model.frame_transformer_3.layer[0].attention.self.query_proj,
-# #             model.frame_transformer_3.layer[0].attention.self.key_proj,
-# #             model.frame_transformer_3.layer[0].attention.self.value_proj,
-#             model.frame_transformer_3.layer[0].attention.output.dense,
-#             model.frame_transformer_3.layer[0].intermediate.dense,
-#             model.frame_transformer_3.layer[0].output.dense,
-#         )
-#         for module in to_prune:
-#             for name in ['weight']:
-#                 for dim in [1]:
-#                     prune.ln_structured(module, name=name, amount=0.01, n=1, dim=dim)
-#                     torch.nn.utils.prune.remove(module, name)
 
         if train:
             val_idx = list(df[df["fold"] != fold].index)
@@ -181,7 +161,7 @@ def kfold_inference_val(
             train=False,
         )
 
-        pred_val, pred_val_aux = predict_fct(
+        pred_val, pred_val_aux = predict(
             model,
             dataset,
             config.loss_config,

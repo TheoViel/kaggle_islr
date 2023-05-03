@@ -118,16 +118,16 @@ class Config:
     selected_folds = [0, 1, 2, 3]
 
     # Model
-    name = "mlp_bert_3"  # mlp_bert_skip
-    pretrained_weights = None  # "../logs/pretrain/2023-04-08/2/mlp_bert_3_0.pt"
+    name = "mlp_bert_4"
+    pretrained_weights = None
     syncbn = False
     num_classes = 250
     num_classes_aux = 0
 
     transfo_layers = 3
     embed_dim = 16
-    dense_dim = 512  # 192 256 512
-    transfo_dim = 1024 + 512  # 768 1024
+    dense_dim = 256  # 192 256 512
+    transfo_dim = 1024  # 768 1024
     transfo_heads = 16
     drop_rate = 0.05
 
@@ -171,7 +171,7 @@ class Config:
         "consistency_weight": 5,
         "rampup_prop": 0.25,
         "aux_loss_weight": 0.,
-        "distill_transfo_dim": 704,  # 576
+        "distill_transfo_dim": 576,  # 576
         "distill_dense_dim": 192,
         "distill_transfo_layers": 3,
     }

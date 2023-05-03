@@ -14,12 +14,40 @@ from utils.torch import sync_across_gpus, save_model_weights
 
 
 class Mixup(torch.nn.Module):
+    """
+    Mixup augmentation module for training neural networks.
+
+    Attributes:
+        beta_distribution (torch.distributions.Beta): The Beta distribution with the specified alpha parameter.
+        num_classes (int): The number of classes in the classification task.
+
+    Methods:
+        forward(y): Performs Mixup augmentation on the input tensor.
+    """
     def __init__(self, alpha=0.4):
+        """
+        Constructor
+        
+        Args:
+            alpha (float, optional): The alpha parameter of the Beta distribution used for mixing coefficients.
+                                     Defaults to 0.4.
+        """
         super(Mixup, self).__init__()
         self.beta_distribution = torch.distributions.Beta(alpha, alpha)
         self.num_classes = 250
 
     def forward(self, y):
+        """
+        Performs Mixup augmentation on the input tensor.
+
+        Args:
+            y (torch.Tensor): The input tensor of shape (batch_size, num_classes) representing the ground truth labels.
+
+        Returns:
+            perm (torch.Tensor): A tensor of shape (batch_size,) representing the index permutation applied to the input tensor.
+            coeffs (torch.Tensor): A tensor of shape (batch_size,) representing the mixing coefficients sampled from the Beta distribution.
+            y (torch.Tensor): The augmented output tensor of shape (batch_size, num_classes).
+        """
         bs = y.shape[0]
         perm = torch.randperm(bs)
         coeffs = self.beta_distribution.rsample(torch.Size((bs,))).to(y.device)
@@ -41,23 +69,24 @@ def evaluate(
     local_rank=0,
 ):
     """
-    Evaluates a model.
+    Evaluate the model on the validation set.
 
     Args:
-        model (torch model): Model.
-        val_loader (DataLoader): Data Loader.
-        loss_config (dict): Loss config.
-        loss_fct (nn.Module): Loss function.
-        use_fp16 (bool, optional): Whether to use fp16. Defaults to False.
-        distributed (bool, optional): Whether training is distributed. Defaults to False.
-        world_size (int, optional): World size. Defaults to 0.
-        local_rank (int, optional): Local rank. Defaults to 0.
+        model (nn.Module): The model to evaluate.
+        val_loader (DataLoader): DataLoader for the validation set.
+        loss_config (dict): Configuration parameters for the loss function.
+        loss_fct (nn.Module): The loss function to compute the evaluation loss.
+        use_fp16 (bool, optional): Whether to use mixed precision training. Defaults to False.
+        distributed (bool, optional): Whether to use distributed training. Defaults to False.
+        world_size (int, optional): Number of processes in distributed training. Defaults to 0.
+        local_rank (int, optional): Local process rank in distributed training. Defaults to 0.
 
     Returns:
-        np array [n x num_classes]: Predictions.
-        np array [n x num_classes_aux]: Aux predictions.
-        torch tensor: Val loss.
+        preds (torch.Tensor or int): Predictions for the main task. If distributed training, 0 is returned for non-master processes.
+        preds_aux (torch.Tensor or int): Predictions for auxiliary tasks. If distributed training, 0 is returned for non-master processes or if there are no auxiliary tasks.
+        val_loss (float or int): Average validation loss. If distributed training, 0 is returned for non-master processes.
     """
+        
     model.eval()
     val_losses = []
     preds, preds_aux = [], []
@@ -138,26 +167,31 @@ def fit(
     fold=0,
 ):
     """
-    Trains a model.
+    Train the model.
 
     Args:
-        model (torch model): Model.
-        train_dataset (Dataset): Training dataset.
-        val_dataset (Dataset): Validation dataset.
-        data_config (dict): Data config.
-        loss_config (dict): Loss config.
-        optimizer_config (dict): Optimizer config.
-        epochs (int, optional): Number of epochs. Defaults to 1.
-        verbose_eval (int, optional): Steps for evaluation. Defaults to 1.
-        use_fp16 (bool, optional): Whether to use fp16. Defaults to False.
-        distributed (bool, optional): Whether training is distributed. Defaults to False.
-        world_size (int, optional): World size. Defaults to 0.
-        local_rank (int, optional): Local rank. Defaults to 0.
-        run (neptune run, optional): Neptune run. Defaults to None.
-        fold (int, optional): Fold number. Defaults to 0.
+        model (nn.Module): The main model to train.
+        model_teacher (nn.Module): The teacher model for consistency regularization.
+        model_distilled (nn.Module): The distilled model for additional regularization.
+        train_dataset (Dataset): Dataset for training.
+        val_dataset (Dataset): Dataset for validation.
+        data_config (dict): Configuration parameters for data loading.
+        loss_config (dict): Configuration parameters for the loss function.
+        optimizer_config (dict): Configuration parameters for the optimizer.
+        mt_config (dict): Configuration parameters for model teacher.
+        epochs (int, optional): Number of training epochs. Defaults to 1.
+        verbose_eval (int, optional): Number of steps for verbose evaluation. Defaults to 1.
+        use_fp16 (bool, optional): Whether to use mixed precision training. Defaults to False.
+        model_soup (bool, optional): Whether to save model weights during training. Defaults to False.
+        distributed (bool, optional): Whether to use distributed training. Defaults to False.
+        local_rank (int, optional): Local process rank in distributed training. Defaults to 0.
+        world_size (int, optional): Number of processes in distributed training. Defaults to 1.
+        log_folder (str, optional): Folder path for saving model weights. Defaults to None.
+        run (neptune.Run, optional): Neptune run object for logging training progress. Defaults to None.
+        fold (int, optional): Fold number for tracking progress. Defaults to 0.
 
     Returns:
-        np array [n x num_classes]: Predictions.
+        preds (torch.Tensor or int): Predictions for the main task. If distributed training, 0 is returned for non-master processes.
     """
     scaler = torch.cuda.amp.GradScaler()
 
@@ -204,14 +238,6 @@ def fit(
 
     mt_config["rampup_length"] = int(num_training_steps * mt_config["rampup_prop"])
     consistency_loss = ConsistencyLoss(mt_config)
-    
-#     if optimizer_config['use_awp']:
-#         awp = AWP(
-#             model,
-#             optimizer,
-#             adv_lr=optimizer_config['awp_lr'],
-#             adv_eps=optimizer_config['awp_eps'],
-#         )
 
     mix = Mixup(alpha=data_config['mix_alpha'])
 
@@ -221,33 +247,20 @@ def fit(
     avg_losses = []
     start_time = time.time()
     for epoch in range(1, epochs + 1):
-#         if epoch == 1:
-#             modify_drop(model, factor=2)
-#         elif epoch == int(epochs * 0.25):
-#             modify_drop(model, factor=0.5)
-#         elif epoch == int(epochs * 0.5):
-#             modify_drop(model, factor=0.5)
-#         elif epoch == int(epochs * 0.75):
-#             modify_drop(model, factor=0.5)
 
-        if epoch in [min(50, epochs // 2)]:  # , 100, 110]:
-            if epoch == min(50, epochs // 2):
-                train_dataset.aug_strength = min(train_dataset.aug_strength, 2)
-#             elif epoch == 100:
-#                 train_dataset.aug_strength = min(train_dataset.aug_strength, 1)
-#             elif epoch == 110:
-#                 train_dataset.aug_strength = 0
+        if epoch == min(50, epochs // 2):
+            train_dataset.aug_strength = min(train_dataset.aug_strength, 2)
 
-            train_loader, val_loader = define_loaders(
-                train_dataset,
-                val_dataset,
-                batch_size=data_config["batch_size"],
-                val_bs=data_config["val_bs"],
-                use_len_sampler=data_config["use_len_sampler"],
-                distributed=distributed,
-                world_size=world_size,
-                local_rank=local_rank,
-            )
+        train_loader, val_loader = define_loaders(
+            train_dataset,
+            val_dataset,
+            batch_size=data_config["batch_size"],
+            val_bs=data_config["val_bs"],
+            use_len_sampler=data_config["use_len_sampler"],
+            distributed=distributed,
+            world_size=world_size,
+            local_rank=local_rank,
+        )
     
         if distributed:
             try:
@@ -294,15 +307,6 @@ def fit(
                 scaler.scale(loss_dist).backward()
                 
             avg_losses.append(loss.detach())
-
-#             if (
-#                 optimizer_config['use_awp'] and
-#                 (step % optimizer_config['awp_period']) == 0 and
-#                 step > optimizer_config["awp_start_step"]
-#             ):
-#                 awp.perturb()
-#             if optimizer_config['use_awp']:
-#                 awp.restore()
 
             scaler.unscale_(optimizer)
             if model_distilled is not None:

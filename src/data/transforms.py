@@ -13,23 +13,6 @@ FLIP_MAP = {  # torch_8+
     81: 82, 83: 84, 85: 86, 87: 88, 89: 90, 91: 92,  # arms
 }
 
-# FLIP_MAP = {  # torch_13
-#     53: 44, 52: 43, 56: 48, 59: 51, 54: 45, 57: 49, 55: 46, 58: 50, 47: 47,  # head
-#     41: 20, 40: 19, 39: 18, 38: 17, 37: 16, 36: 15, 35: 14, 34: 13, 33: 12, 32: 11, 31: 10, 30: 9, 29: 8, 28: 7, 27: 6, 26: 5, 25: 4, 24: 3, 23: 2, 22: 1, 21: 0,  # hands
-#     94: 93, 123: 124,  # eyebrows, cheeks, eyes
-#     63: 73, 62: 72, 61: 71, 71: 61, 72: 62, 73: 63, 79: 69, 76: 66, 66: 76, 69: 79,  # outter lips
-#     64: 74, 70: 80, 65: 75, 78: 68, 67: 77,  # inner lips
-#     81: 82, 83: 84, 85: 86, 87: 88, 89: 90, 91: 92,  # arms
-#     113: 117, 114: 118, 115: 119, 116: 120,  # eyebrows
-#     95: 104, 96: 105, 97: 106, 98: 107, 99: 108, 100: 109, 101: 110, 102: 111, 103: 112  # eyes
-# }
-
-# FLIP_MAP = {  # torch_14
-#     41: 20, 40: 19, 39: 18, 38: 17, 37: 16, 36: 15, 35: 14, 34: 13, 33: 12, 32: 11, 31: 10, 30: 9, 29: 8, 28: 7, 27: 6, 26: 5, 25: 4, 24: 3, 23: 2, 22: 1, 21: 0,  # hands
-#     67: 68, 65: 66, 64: 63,  # eyebrows, cheeks, eyes
-#     45: 55, 44: 54, 43: 53, 53: 43, 54: 44, 55: 45, 61: 51, 58: 48, 48: 58, 51: 61, 46: 56, 52: 62, 47: 57, 60: 50, 49: 59,
-# }
-
 
 FLIP_ARRAY = np.arange(np.max(np.concatenate(list(FLIP_MAP.items()))) + 1)
 for k, v in FLIP_MAP.items():
@@ -38,12 +21,19 @@ for k, v in FLIP_MAP.items():
 
 
 def flip(data, flip_array=FLIP_ARRAY, p=1):
+    """
+    Flips the data horizontally.
+
+    Args:
+        data (dict): The input data.
+        flip_array (numpy.ndarray, optional): Array mapping indices to their flipped indices. Defaults to FLIP_ARRAY.
+        p (float, optional): Probability of flipping the data. Defaults to 1.
+
+    Returns:
+        dict: The flipped data.
+    """
     if np.random.random() > p:
         return data
-    
-#     if data.get('target', [-1])[0] in [25, 172, 163, 36, 129, 95, 218, 5, 126, 41, 166, 9, 69, 141, 125, 19, 86, 179, 203, 21, 222, 188, 64, 243, 146, 11]:
-# #         print('noflip')
-#         return data
 
     flip_array_ = np.arange(len(data["x"].T))
     flip_array = flip_array[: len(flip_array_)]
@@ -87,6 +77,17 @@ for k, v in FLIP_MAP_HANDS.items():
 
 
 def add_missing_hand(data, flip_array=FLIP_ARRAY_HANDS, p=1.0):
+    """
+    Adds missing hand data to the input dictionary.
+
+    Args:
+        data (dict): The input data.
+        flip_array (numpy.ndarray, optional): Array mapping indices to their flipped indices. Defaults to FLIP_ARRAY_HANDS.
+        p (float, optional): Probability of adding missing hand data. Defaults to 1.0.
+
+    Returns:
+        dict: The data with missing hand data added.
+    """
     if np.random.random() > p:
         return data
 
@@ -120,80 +121,20 @@ def add_missing_hand(data, flip_array=FLIP_ARRAY_HANDS, p=1.0):
         ) + flipped[k][missing_right] * (embed == 1).unsqueeze(0)
 
     return data
-
-
-def normalize(data):
-    for k in ["x", "y", "z"]:
-        x = data[k].flatten()
-        x = x[x != 0]
-        mean = x.mean()
-        std = x.std(unbiased=False)
-
-        data[k] = torch.where(
-            data[k] != 0,
-            (data[k] - mean) / (std + 1e-6),
-            0,
-        )
-    return data
-
-
-
-def normalize_face(data):
-    embed = data["type"][0]
-    for k in ["x", "y", "z"]:
-        #         fts =
-        face = data[k].T[embed == 11].T
-
-        min_ = face.min(-1)[0].unsqueeze(-1)
-        max_ = face.max(-1)[0].unsqueeze(-1)
-
-        data[k] = torch.where(
-            data[k] != 0,
-            (data[k] - min_) / (max_ - min_ + 1e-6),
-            0,
-        )
-
-    return data
-
-
-POINTS_N = [81, 82, 93, 94, 95, 96, 97, 98, 99, 42, 53, 52, 56, 59, 54, 57, 55, 58, 47, 44, 43, 48, 51, 45, 49, 46, 50, 47]
-
-
-def normalize_2(data, flatten=True):
-    for k in ["x", "y", "z"]:
-        x = data[k].T[POINTS_N].T
-#         print(x.shape)
-        
-        if flatten:
-            x = x.flatten()
-
-        mean = x.mean(-1, keepdims=True)
-        std = x.std(-1, unbiased=False, keepdims=True)
-
-        data[k] = torch.where(
-            data[k] != 0,
-            (data[k] - mean) / (std + 1e-6),
-            0,
-        )
-    return data
-
-
-def normalize_aug(data, p=0.5):
-    if np.random.random() > p:
-        return data
-
-    choice = np.random.randint(1, 4)
-#     print(choice)
-    if choice == 1:
-        return normalize(data)
-    elif choice == 2:
-        return normalize_2(data, flatten=True)
-    else:
-        return normalize_2(data, flatten=False)
-        
     
     
 def scale(data, factor=0.3, p=0.5):
+    """
+    Scales the input data by a random factor.
+
+    Args:
+        data (dict): The input data.
+        factor (float, optional): The scaling factor. Defaults to 0.3.
+        p (float, optional): Probability of applying the scaling. Defaults to 0.5.
+
+    Returns:
+        dict: The scaled data.
+    """
     if np.random.random() > p:
         return data
 
@@ -207,18 +148,18 @@ def scale(data, factor=0.3, p=0.5):
     return data
 
 
-def dropout(data, drop_p=0.1, p=0.5):
-    if np.random.random() > p:
-        return data
+def rotate(data, max_angle=1/6, p=0.5):
+    """
+    Rotates the input data by a random angle.
 
-    mask = torch.rand(data["x"].size()) > drop_p
-    for k in ["x", "y", "z"]:
-        data[k] *= mask
+    Args:
+        data (dict): The input data.
+        max_angle (float, optional): The maximum angle in radians/2pi for rotation. Defaults to 1/6.
+        p (float, optional): Probability of applying rotation. Defaults to 0.5.
 
-    return data
-
-
-def rotate(data, max_angle=1 / 6, p=0.5):
+    Returns:
+        dict: The rotated data.
+    """
     if np.random.random() > p:
         return data
 
@@ -238,46 +179,17 @@ def rotate(data, max_angle=1 / 6, p=0.5):
     return data
 
 
-def drop_frames(data, prop=0.1, p=0.5):
-    if np.random.random() > p:
-        return data
-
-    if len(data["x"]) < 10:  # too short
-        return data
-
-    frames = np.arange(len(data["x"]))
-    to_keep = np.random.choice(frames, int((1 - prop) * len(frames)), replace=False)
-    return {
-        k: (data[k][np.sort(to_keep)] if k != "target" else data[k])
-        for k in data.keys()
-    }
-
-
-def add_noise(data, snr=50, p=0.5):
-    if np.random.random() > p:
-        return data
-
-    for k in ["x", "y"]: # , "z"]:
-        noise = torch.from_numpy(
-            np.random.normal(scale=data[k].std() / snr, size=data[k].shape)
-        )
-        data[k] += noise * (data[k] != 0)
-
-    return data
-
-
-def shift(data, snr=3, p=0.5):
-    if np.random.random() > p:
-        return data
-
-    for k in ["x", "y", "z"]:
-        s = np.random.random() / ((data[k].max() - data[k].min()) / snr)
-        data[k] += s * np.random.choice([-1, 1])
-
-    return data
-
-
 def interpolate(data, p=0.5):
+    """
+    Interpolates missing values in the input data.
+
+    Args:
+        data (dict): The input data.
+        p (float, optional): Probability of applying interpolation. Defaults to 0.5.
+
+    Returns:
+        dict: The data with missing values interpolated.
+    """
     if np.random.random() > p:
         return data
 
@@ -298,33 +210,18 @@ def interpolate(data, p=0.5):
     return data
 
 
-def resize(data, p=0.5, max_size=50):
-    if np.random.random() > p:
-        return data
-
-    try:
-        sz = data["x"].size(0)
-        size = np.random.randint((sz + 5) // 2, (max_size + sz) // 2)
-    except Exception:
-        return data
-
-    if size <= 2 or size == sz or sz == 1:
-        return data
-
-    data = interpolate(data, p=1)
-
-    for k in ["x", "y", "z"]:
-        data[k] = torch.nn.functional.interpolate(
-            data[k].T.unsqueeze(0), size, mode="linear"
-        )[0].T
-
-    data["type"] = data["type"][:1].repeat(size, 1)
-    data["landmark"] = data["landmark"][:1].repeat(size, 1)
-
-    return data
-
-
 def crop(data, max_crop=0.2, p=0.5):
+    """
+    Randomly crops the input data.
+
+    Args:
+        data (dict): The input data.
+        max_crop (float, optional): Maximum proportion of data to be cropped. Defaults to 0.2.
+        p (float, optional): Probability of applying cropping. Defaults to 0.5.
+
+    Returns:
+        dict: The cropped data.
+    """
     if np.random.random() > p:
         return data
     
@@ -345,19 +242,22 @@ def crop(data, max_crop=0.2, p=0.5):
 
 
 def augment(data, aug_strength=0):
-    
+    """
+    Augments the input data based on the specified augmentation strength.
+
+    Args:
+        data (dict): The input data.
+        aug_strength (int): The augmentation strength level (0, 1, 2, or 3).
+
+    Returns:
+        dict: The augmented data.
+    """
     if aug_strength == 3:
         data = interpolate(data, p=0.5)
         data = flip(data, p=0.5)
         data = rotate(data, p=0.5)
         data = crop(data, p=0.5)
         data = scale(data, p=0.25)
-        
-#         data = normalize_aug(data, p=0.5)
-
-#         data = add_noise(data, snr=50, p=0.5)
-#         data = drop_frames(data, prop=0.1, p=0.25)
-#         data = dropout(data, drop_p=0.05, p=0.25)
 
     if aug_strength == 2:
         data = interpolate(data, p=0.5)
@@ -365,11 +265,6 @@ def augment(data, aug_strength=0):
         data = rotate(data, p=0.5)
         data = scale(data, p=0.25)
         data = crop(data, p=0.25)
-        
-#         data = normalize_aug(data, p=0.5)
-
-#         data = add_noise(data, snr=100, p=0.25)
-#         data = dropout(data, drop_p=0.05, p=1)
 
     elif aug_strength == 1:
 

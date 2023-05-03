@@ -6,8 +6,6 @@ import torch.nn.functional as F
 
 from torch.nn import LayerNorm
 from transformers import AutoConfig
-
-from model_zoo.utils import add_shift
 from tflite.deberta import DebertaV2Encoder
 
 
@@ -40,19 +38,7 @@ def compute_ids(transpose=True, max_len=50, position_buckets=50, num_attention_h
 
     ids += np.arange(0, max_len)[:, None] * position_buckets * 2
     ids = ids[None]
-
-    # REPEAT NUM_ATT_HEADS
     ids = torch.from_numpy(ids)
-#     print(ids.size())
-
-#     ids_ = ids.expand(num_attention_heads, -1, -1).contiguous()
-#     ids_ += torch.from_numpy(
-#         np.arange(num_attention_heads) * self.position_buckets * 2 * max_len
-#     ).view(-1, 1, 1)
-    
-#     print(ids_.size())
-#     print(ids_)
-
     return ids
 
 
@@ -139,8 +125,12 @@ class Model(nn.Module):
 
         transfo_dim_ = transfo_dim
         if transfo_layers == 3:  # 512, 768, 1024 / 768
-            delta = min(256, transfo_dim - 512)
-            transfo_dim = 512
+            if transfo_dim <= 1024:
+                delta = min(256, transfo_dim - 512)
+                transfo_dim = 512
+            else:  # BIG Models
+                delta = (transfo_dim - 1024) // 2
+                transfo_dim = 1024
         else:  # 768, 768 
             delta = 0
         self.transfo_dim = transfo_dim
@@ -178,24 +168,26 @@ class Model(nn.Module):
             config.hidden_size += delta
             config.intermediate_size += delta
             
-            if transfo_layers >= 3 and transfo_dim_ == 1024:
+            if transfo_layers >= 3 and transfo_dim_ >= 1024:
                 config.output_size += delta
 
-            config.attention_probs_dropout_prob *= 2
-            config.hidden_dropout_prob *= 2
+            if delta > 0:
+                config.attention_probs_dropout_prob *= 2
+                config.hidden_dropout_prob *= 2
+
             self.frame_transformer_2 = DebertaV2Encoder(config)
             self.frame_transformer_2.layer[0].output = DebertaV2Output(config)
 
         self.frame_transformer_3 = None
         if transfo_layers >= 3:
-            if transfo_dim_ == 1024:
+            if transfo_dim_ >= 1024:
                 config.hidden_size += delta
                 config.intermediate_size += delta
                 config.attention_probs_dropout_prob *= 2
                 config.hidden_dropout_prob *= 2
-                
-            config.output_size -= delta
+                config.output_size += delta
 
+            config.output_size -= delta
             self.frame_transformer_3 = DebertaV2Encoder(config)
             self.frame_transformer_3.layer[0].output = DebertaV2Output(config)
 

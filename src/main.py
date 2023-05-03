@@ -1,40 +1,14 @@
-# SETTINGS
-
-# import os
-# os.environ["PYTORCH_JIT"] = "0"
-# os.environ["OMP_NUM_THREADS"] = "1"
-# os.environ["MKL_NUM_THREADS"] = "1"
-# os.environ["OPENBLAS_NUM_THREADS"] = "1"
-# os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
-# os.environ["NUMEXPR_NUM_THREADS"] = "1"
-# os.environ["TOKENIZERS_PARALLELISM"] = "false"
-# os.environ["GOMP_CPU_AFFINITY"] = "0-31"
-
-# import ctypes
-# _libcudart = ctypes.CDLL('libcudart.so')
-# # Set device limit on the current device
-# # cudaLimitMaxL2FetchGranularity = 0x05
-# pValue = ctypes.cast((ctypes.c_int*1)(), ctypes.POINTER(ctypes.c_int))
-# _libcudart.cudaDeviceSetLimit(ctypes.c_int(0x05), ctypes.c_int(128))
-# _libcudart.cudaDeviceGetLimit(pValue, ctypes.c_int(0x05))
-# assert pValue.contents.value == 128
-
-# CODE
-
-# import torch_performance_linter
-
 import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
-import time
-import torch
-import warnings
-import argparse
-
-from data.preparation import prepare_data, prepare_wsasl
-from params import DATA_PATH
-from utils.torch import init_distributed
-from utils.logger import create_logger, save_config, prepare_log_folder, init_neptune
+import time  # noqa
+import torch  # noqa
+import warnings  # noqa
+import argparse  # noqa
+from data.preparation import prepare_data, prepare_wsasl  # noqa
+from params import DATA_PATH  # noqa
+from utils.torch import init_distributed  # noqa
+from utils.logger import create_logger, save_config, prepare_log_folder, init_neptune  # noqa
 
 
 def parse_args():
@@ -105,7 +79,7 @@ class Config:
     save_weights = True
 
     # Data
-    processed_folder = "torch_12/"
+    processed_folder = "torch_12/"  # torch_19/
     max_len = 25  # 25, 80
     resize_mode = "pad"
     aug_strength = 3
@@ -126,8 +100,8 @@ class Config:
 
     transfo_layers = 3
     embed_dim = 16
-    dense_dim = 256  # 192 256 512
-    transfo_dim = 1024  # 768 1024
+    dense_dim = 512  # 256
+    transfo_dim = 1536  # 1024
     transfo_heads = 16
     drop_rate = 0.05
 
@@ -157,12 +131,6 @@ class Config:
         "betas": (0.9, 0.999),
         "max_grad_norm": 10.,
         "weight_decay": 0.4,
-#         # AWP
-#         "use_awp": True,
-#         "awp_start_step": 1,
-#         "awp_lr": 1e-3,
-#         "awp_eps": 1e-3,
-#         "awp_period": 1,
     }
 
     mt_config = {
@@ -171,7 +139,7 @@ class Config:
         "consistency_weight": 5,
         "rampup_prop": 0.25,
         "aux_loss_weight": 0.,
-        "distill_transfo_dim": 576,  # 576
+        "distill_transfo_dim": 768,  # 576
         "distill_dense_dim": 192,
         "distill_transfo_layers": 3,
     }
@@ -220,7 +188,7 @@ if __name__ == "__main__":
 
     if args.lr:
         config.optimizer_config["lr"] = args.lr
-        
+
     if args.mt_ema_decay:
         config.mt_config["ema_decay"] = args.mt_ema_decay
 
@@ -230,26 +198,17 @@ if __name__ == "__main__":
 
     df = prepare_data(DATA_PATH, config.processed_folder)
 
-    try:
-        print(torch_performance_linter)  # noqa
-        if config.local_rank == 0:
-            print("Using TPL\n")
-        run = None
-        config.epochs = 1
-        log_folder = None
-        df = df.head(10000)
-    except Exception:
-        run = None
-        if config.local_rank == 0:
-            run = init_neptune(Config, log_folder)
+    run = None
+    if config.local_rank == 0:
+        run = init_neptune(Config, log_folder)
 
-            if args.fold > -1:
-                config.selected_folds = [args.fold]
-                create_logger(directory=log_folder, name=f"logs_{args.fold}.txt")
-            else:
-                create_logger(directory=log_folder, name="logs.txt")
+        if args.fold > -1:
+            config.selected_folds = [args.fold]
+            create_logger(directory=log_folder, name=f"logs_{args.fold}.txt")
+        else:
+            create_logger(directory=log_folder, name="logs.txt")
 
-            save_config(config, log_folder + "config.json")
+        save_config(config, log_folder + "config.json")
 
     if config.local_rank == 0:
         print("Device :", torch.cuda.get_device_name(0), "\n")

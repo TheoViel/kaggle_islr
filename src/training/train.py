@@ -2,13 +2,11 @@ import gc
 import time
 import torch
 import numpy as np
-# from tqdm import tqdm
 from transformers import get_linear_schedule_with_warmup
 
 from data.loader import define_loaders
 from training.losses import SignLoss, ConsistencyLoss
-from training.optim import define_optimizer, update_teacher_params, AWP
-from model_zoo.utils import modify_drop
+from training.optim import define_optimizer, update_teacher_params
 from utils.metrics import accuracy
 from utils.torch import sync_across_gpus, save_model_weights
 
@@ -18,7 +16,7 @@ class Mixup(torch.nn.Module):
     Mixup augmentation module for training neural networks.
 
     Attributes:
-        beta_distribution (torch.distributions.Beta): The Beta distribution with the specified alpha parameter.
+        beta_distribution (torch.distributions.Beta): The Beta distribution.
         num_classes (int): The number of classes in the classification task.
 
     Methods:
@@ -27,10 +25,9 @@ class Mixup(torch.nn.Module):
     def __init__(self, alpha=0.4):
         """
         Constructor
-        
+
         Args:
-            alpha (float, optional): The alpha parameter of the Beta distribution used for mixing coefficients.
-                                     Defaults to 0.4.
+            alpha (float, optional): The alpha parameter of the Beta distribution. Defaults to 0.4.
         """
         super(Mixup, self).__init__()
         self.beta_distribution = torch.distributions.Beta(alpha, alpha)
@@ -41,18 +38,20 @@ class Mixup(torch.nn.Module):
         Performs Mixup augmentation on the input tensor.
 
         Args:
-            y (torch.Tensor): The input tensor of shape (batch_size, num_classes) representing the ground truth labels.
+            y (torch.Tensor): Ground truth labels.
 
         Returns:
-            perm (torch.Tensor): A tensor of shape (batch_size,) representing the index permutation applied to the input tensor.
-            coeffs (torch.Tensor): A tensor of shape (batch_size,) representing the mixing coefficients sampled from the Beta distribution.
+            perm (torch.Tensor): Index permutation applied to the input tensor.
+            coeffs (torch.Tensor): Mixing coefficients sampled from the Beta distribution.
             y (torch.Tensor): The augmented output tensor of shape (batch_size, num_classes).
         """
         bs = y.shape[0]
         perm = torch.randperm(bs)
         coeffs = self.beta_distribution.rsample(torch.Size((bs,))).to(y.device)
 
-        y = torch.zeros(y.size(0), self.num_classes).to(y.device).scatter(1, y.view(-1, 1).long(), 1)
+        y = torch.zeros(
+            y.size(0), self.num_classes
+        ).to(y.device).scatter(1, y.view(-1, 1).long(), 1)
         y = coeffs.view(-1, 1) * y + (1 - coeffs.view(-1, 1)) * y[perm]
 
         return perm, coeffs, y
@@ -82,15 +81,15 @@ def evaluate(
         local_rank (int, optional): Local process rank in distributed training. Defaults to 0.
 
     Returns:
-        preds (torch.Tensor or int): Predictions for the main task. If distributed training, 0 is returned for non-master processes.
-        preds_aux (torch.Tensor or int): Predictions for auxiliary tasks. If distributed training, 0 is returned for non-master processes or if there are no auxiliary tasks.
-        val_loss (float or int): Average validation loss. If distributed training, 0 is returned for non-master processes.
+        preds (torch.Tensor or int): Predictions for the main task.
+        preds_aux (torch.Tensor or int): Predictions for auxiliary tasks.
+        val_loss (float or int): Average validation loss.
     """
-        
+
     model.eval()
     val_losses = []
     preds, preds_aux = [], []
-    
+
     try:
         num_classes_aux = model.module.num_classes_aux
     except AttributeError:
@@ -103,7 +102,7 @@ def evaluate(
 
             with torch.cuda.amp.autocast(enabled=use_fp16):
                 y_pred, y_pred_aux = model(data)
-                
+
                 if isinstance(y_pred_aux, list):
                     y_pred_aux = [y.detach() for y in y_pred_aux]
                 else:
@@ -182,16 +181,16 @@ def fit(
         epochs (int, optional): Number of training epochs. Defaults to 1.
         verbose_eval (int, optional): Number of steps for verbose evaluation. Defaults to 1.
         use_fp16 (bool, optional): Whether to use mixed precision training. Defaults to False.
-        model_soup (bool, optional): Whether to save model weights during training. Defaults to False.
+        model_soup (bool, optional): Whether to save model weights for soup. Defaults to False.
         distributed (bool, optional): Whether to use distributed training. Defaults to False.
         local_rank (int, optional): Local process rank in distributed training. Defaults to 0.
         world_size (int, optional): Number of processes in distributed training. Defaults to 1.
         log_folder (str, optional): Folder path for saving model weights. Defaults to None.
-        run (neptune.Run, optional): Neptune run object for logging training progress. Defaults to None.
+        run (neptune.Run, optional): Neptune run object for logging. Defaults to None.
         fold (int, optional): Fold number for tracking progress. Defaults to 0.
 
     Returns:
-        preds (torch.Tensor or int): Predictions for the main task. If distributed training, 0 is returned for non-master processes.
+        preds (torch.Tensor or int): Predictions for the main task.
     """
     scaler = torch.cuda.amp.GradScaler()
 
@@ -202,7 +201,7 @@ def fit(
         betas=optimizer_config["betas"],
         weight_decay=optimizer_config["weight_decay"],
     )
-    
+
     if model_distilled is not None:
         optimizer_distilled = define_optimizer(
             model_distilled,
@@ -261,7 +260,7 @@ def fit(
             world_size=world_size,
             local_rank=local_rank,
         )
-    
+
         if distributed:
             try:
                 train_loader.sampler.set_epoch(epoch)
@@ -274,18 +273,20 @@ def fit(
                 data_teacher[k] = data_teacher[k].cuda()
                 if model_distilled is not None:
                     data_distilled[k] = data_distilled[k].cuda()
-                    
+
             perm, coefs = None, None
             y = data["target"]
-            if mix is not None and np.random.random() < (1 - epoch / (0.9 * epochs)) * data_config['mix_proba']:
-#                 if epoch >= epochs * optimizer_config["warmup_prop"]:
-                perm, coefs, y = mix(data['target'])
+            if mix is not None:
+                if np.random.random() < (1 - epoch / (0.9 * epochs)) * data_config['mix_proba']:
+                    perm, coefs, y = mix(data['target'])
 
             with torch.cuda.amp.autocast(enabled=use_fp16):
                 y_pred, y_pred_aux = model(data, perm=perm, coefs=coefs)
-                    
+
                 with torch.no_grad():
-                    y_pred_teacher, y_pred_aux_teacher = model_teacher(data_teacher, perm=perm, coefs=coefs)
+                    y_pred_teacher, y_pred_aux_teacher = model_teacher(
+                        data_teacher, perm=perm, coefs=coefs
+                    )
 
                 loss = loss_fct(y_pred, y_pred_aux, y, 0)
 
@@ -296,26 +297,32 @@ def fit(
                     student_pred_aux=y_pred_aux,
                     teacher_pred_aux=y_pred_aux_teacher,
                 )
-                
+
                 if model_distilled is not None:
-                    y_pred_dist, y_pred_aux_dist = model_distilled(data_distilled, perm=perm, coefs=coefs)
-                    loss_dist = loss_fct(y_pred_dist, y_pred_aux_dist, y, 0) 
+                    y_pred_dist, y_pred_aux_dist = model_distilled(
+                        data_distilled, perm=perm, coefs=coefs
+                    )
+                    loss_dist = loss_fct(y_pred_dist, y_pred_aux_dist, y, 0)
                     loss_dist += consistency_loss(y_pred_dist, y_pred_teacher, step)
 
             scaler.scale(loss).backward()
             if model_distilled is not None:
                 scaler.scale(loss_dist).backward()
-                
+
             avg_losses.append(loss.detach())
 
             scaler.unscale_(optimizer)
             if model_distilled is not None:
                 scaler.unscale_(optimizer_distilled)
-            
+
             if optimizer_config["max_grad_norm"]:
-                torch.nn.utils.clip_grad_norm_(model.parameters(), optimizer_config["max_grad_norm"])
+                torch.nn.utils.clip_grad_norm_(
+                    model.parameters(), optimizer_config["max_grad_norm"]
+                )
                 if model_distilled is not None:
-                    torch.nn.utils.clip_grad_norm_(model_distilled.parameters(), optimizer_config["max_grad_norm"])
+                    torch.nn.utils.clip_grad_norm_(
+                        model_distilled.parameters(), optimizer_config["max_grad_norm"]
+                    )
 
             scaler.step(optimizer)
             if model_distilled is not None:

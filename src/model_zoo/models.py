@@ -3,7 +3,6 @@ import numpy as np
 import torch.nn as nn
 
 from torch.nn import LayerNorm
-from torch.masked import masked_tensor
 from transformers import AutoConfig
 from transformers.models.deberta_v2.modeling_deberta_v2 import DebertaV2Encoder
 from transformers.models.deberta_v2.modeling_deberta_v2 import StableDropout
@@ -34,12 +33,12 @@ def define_model(
         embed_dim (int, optional): The embedding dimension. Defaults to 256.
         dense_dim (int, optional): The dense layer dimension. Defaults to 512.
         transfo_dim (int, optional): The transformer layer dimension. Defaults to 768.
-        transfo_heads (int, optional): The number of attention heads in the transformer. Defaults to 8.
+        transfo_heads (int, optional): Number of attention heads in the transformer. Defaults to 8.
         transfo_layers (int, optional): The number of transformer layers. Defaults to 4.
         drop_rate (float, optional): The dropout rate. Defaults to 0.
         num_classes (int, optional): The number of classes for the main task. Defaults to 250.
         num_classes_aux (int, optional): The number of classes for auxiliary tasks. Defaults to 0.
-        pretrained_weights (str, optional): Path to pre-trained weights to initialize the model. Defaults to "".
+        pretrained_weights (str, optional): Path to pre-trained weights. Defaults to "".
         n_landmarks (int, optional): The number of landmarks. Defaults to 100.
         max_len (int, optional): The maximum length of input sequences. Defaults to 40.
         verbose (int, optional): Verbosity level. Defaults to 1.
@@ -88,8 +87,8 @@ class DebertaV2Output(nn.Module):
         config (DebertaV2Config): The model configuration class instance.
 
     Methods:
-        __init__(self, config): Initializes a DebertaV2Output instance with the specified configuration.
-        forward(self, hidden_states, input_tensor): Performs the forward pass of the DebertaV2Output model.
+        __init__(self, config): Initializes a DebertaV2Output instance with the specified config.
+        forward(self, hidden_states, input_tensor): Performs the forward pass.
     """
     def __init__(self, config):
         """
@@ -106,14 +105,14 @@ class DebertaV2Output(nn.Module):
 
     def forward(self, hidden_states, input_tensor):
         """
-        Performs the forward pass of the DebertaV2Output model.
+        Performs the forward pass.
 
         Args:
             hidden_states (Tensor): The hidden states from the previous layer.
             input_tensor (Tensor): The input tensor.
 
         Returns:
-            Tensor: The output tensor after applying the linear transformation, dropout, and layer normalization.
+            Tensor: The output tensor.
         """
         if self.config.skip_output:
             hidden_states = self.dense(hidden_states + input_tensor)
@@ -156,8 +155,8 @@ class SignMLPBert3(nn.Module):
         logits_aux (nn.Linear): Linear layer for auxiliary task classification (optional).
 
     Methods:
-        __init__(self, embed_dim, transfo_dim, dense_dim, transfo_heads, transfo_layers, drop_rate, num_classes,
-                 num_classes_aux, n_landmarks, max_len): Constructor
+        __init__(self, embed_dim, transfo_dim, dense_dim, transfo_heads, transfo_layers, drop_rate,
+                 num_classes,num_classes_aux, n_landmarks, max_len): Constructor
         forward(self, x, perm, coefs): Performs the forward pass.
     """
     def __init__(
@@ -175,16 +174,16 @@ class SignMLPBert3(nn.Module):
     ):
         """
         Constructor.
-        
+
         Args:
             embed_dim (int, optional): The embedding dimension. Defaults to 256.
             dense_dim (int, optional): The dense layer dimension. Defaults to 512.
             transfo_dim (int, optional): The transformer layer dimension. Defaults to 768.
-            transfo_heads (int, optional): The number of attention heads in the transformer. Defaults to 8.
+            transfo_heads (int, optional): Number of attention heads. Defaults to 8.
             drop_rate (float, optional): The dropout rate. Defaults to 0.
             transfo_layers (int, optional): The number of transformer layers. Defaults to 4.
             num_classes (int, optional): The number of classes for the main task. Defaults to 250.
-            num_classes_aux (int, optional): The number of classes for auxiliary tasks. Defaults to 0.
+            num_classes_aux (int, optional): Number of classes for auxiliary tasks. Defaults to 0.
             n_landmarks (int, optional): The number of landmarks. Defaults to 100.
             max_len (int, optional): The maximum length of input sequences. Defaults to 40.
         """
@@ -252,7 +251,7 @@ class SignMLPBert3(nn.Module):
             else:  # BIG Models
                 delta = (transfo_dim - 1024) // 2
                 transfo_dim = 1024
-        else:  # 768, 768 
+        else:  # 768, 768
             delta = 0
 
         self.landmark_mlp = nn.Sequential(
@@ -286,7 +285,7 @@ class SignMLPBert3(nn.Module):
         if transfo_layers >= 2:
             config.hidden_size += delta
             config.intermediate_size += delta
-            
+
             if transfo_layers >= 3 and transfo_dim_ >= 1024:
                 config.output_size += delta
 
@@ -313,7 +312,6 @@ class SignMLPBert3(nn.Module):
         self.logits = nn.Linear(config.output_size, num_classes)
         if num_classes_aux:
             self.logits_aux = nn.Linear(config.output_size, num_classes_aux)
-            
 
     def forward(self, x, perm=None, coefs=None):
         """
@@ -333,9 +331,13 @@ class SignMLPBert3(nn.Module):
         x_landmark = self.landmark_norm(self.landmark_embed(x["landmark"]))
         x_pos = torch.stack([x["x"], x["y"], x["z"]], -1)
 
-        x_pos = x_pos.transpose(1, 2).transpose(2, 3).contiguous().view(bs * n_landmarks, -1, n_frames)
+        x_pos = x_pos.transpose(1, 2).transpose(2, 3).contiguous().view(
+            bs * n_landmarks, -1, n_frames
+        )
         x_pos = self.pos_cnn(x_pos)
-        x_pos = x_pos.view(bs, n_landmarks, -1, n_frames).transpose(2, 3).transpose(1, 2).contiguous()
+        x_pos = x_pos.view(
+            bs, n_landmarks, -1, n_frames
+        ).transpose(2, 3).transpose(1, 2).contiguous()
         x_pos = torch.cat([torch.stack([x["x"], x["y"], x["z"]], -1), x_pos], -1)
 
         x_pos = self.pos_dense(x_pos)
@@ -347,7 +349,7 @@ class SignMLPBert3(nn.Module):
 
         # LEFT HAND FEATURES
         left_hand_fts = fts.view(-1, n_fts)[embed == 1].view(bs, n_frames, -1, n_fts)
-        
+
         mask = x["mask"][:, :, 0][:, :, None, None]
         mask_left_hand = mask.repeat(1, 1, left_hand_fts.shape[2], n_fts)
         m = left_hand_fts * mask_left_hand
@@ -358,26 +360,26 @@ class SignMLPBert3(nn.Module):
 
         # RIGHT HAND FEATURES
         right_hand_fts = fts.view(-1, n_fts)[embed == 2].view(bs, n_frames, -1, n_fts)
-        
+
         mask_right_hand = mask.repeat(1, 1, right_hand_fts.shape[2], n_fts)
         m = right_hand_fts * mask_right_hand
         m = m.sum((1, 2)) / mask_right_hand.sum((1, 2))  # masked avg
         right_hand_fts = right_hand_fts - m[:, None, None, :]
         right_hand_fts = right_hand_fts * mask_right_hand
-        
+
         right_hand_fts = self.right_hand_mlp(right_hand_fts.view(bs * n_frames, -1))
 
         hand_fts = torch.stack([left_hand_fts, right_hand_fts], -1).amax(-1)
 
         # LIPS FEATURES
         lips_fts = fts.view(-1, n_fts)[embed == 4].view(bs, n_frames, -1, n_fts)
-        
+
         mask_lips = mask.repeat(1, 1, lips_fts.shape[2], n_fts)
         m = lips_fts * mask_lips
         m = m.sum((1, 2)) / mask_lips.sum((1, 2))  # masked avg
         lips_fts = lips_fts - m[:, None, None, :]
         lips_fts = lips_fts * mask_lips
-        
+
         lips_fts = self.lips_mlp(lips_fts.view(bs * n_frames, -1))
 
         # FACE FEATURES
@@ -407,30 +409,27 @@ class SignMLPBert3(nn.Module):
 
         fts *= mask.unsqueeze(-1)
 
-        where = np.random.randint(1, self.transfo_layers + 1) if perm is not None else 0  # Manifold Mixup
-        coefs = coefs.view(-1, 1, 1)  if coefs is not None else None
+        # Manifold Mixup
+        where = np.random.randint(1, self.transfo_layers + 1) if perm is not None else 0
+        coefs = coefs.view(-1, 1, 1) if coefs is not None else None
 
-#         print(mask_avg.size(), fts.size())
         if where == 1:
             fts = coefs * fts + (1 - coefs) * fts[perm]
-#             mask_avg = coefs * mask_avg + (1 - coefs) * mask_avg[perm]
             mask = ((mask + mask[perm]) > 0).float()
             mask_avg = mask.unsqueeze(-1)
 
         fts = self.frame_transformer_1(fts, mask).last_hidden_state
-        
+
         if where == 2:
             fts = coefs * fts + (1 - coefs) * fts[perm]
-#             mask_avg = coefs * mask_avg + (1 - coefs) * mask_avg[perm]
             mask = ((mask + mask[perm]) > 0).float()
             mask_avg = mask.unsqueeze(-1)
 
         if self.frame_transformer_2 is not None:
             fts = self.frame_transformer_2(fts, mask).last_hidden_state
-            
+
         if where == 3:
             fts = coefs * fts + (1 - coefs) * fts[perm]
-#             mask_avg = coefs * mask_avg + (1 - coefs) * mask_avg[perm]
             mask = ((mask + mask[perm]) > 0).float()
             mask_avg = mask.unsqueeze(-1)
 

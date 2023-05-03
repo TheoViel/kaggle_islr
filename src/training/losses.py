@@ -2,7 +2,6 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-from scipy.special import softmax
 
 
 class ConsistencyLoss(nn.Module):
@@ -76,17 +75,17 @@ class ConsistencyLoss(nn.Module):
             student_pred (torch.Tensor): Predictions from the student model.
             teacher_pred (torch.Tensor): Predictions from the teacher model.
             step (int, optional): Current step. Defaults to 1.
-            student_pred_aux (None or list of torch.Tensor, optional): Auxiliary predictions from the student model.
-                Defaults to None.
-            teacher_pred_aux (None or list of torch.Tensor, optional): Auxiliary predictions from the teacher model.
-                Defaults to None.
+            student_pred_aux (None or list of torch.Tensor, optional): Auxiliary predictions
+                from the student model. Defaults to None.
+            teacher_pred_aux (None or list of torch.Tensor, optional): Auxiliary predictions
+                from the teacher model. Defaults to None.
 
         Returns:
             torch.Tensor: Consistency loss.
 
         """
         w = self.get_consistency_weight(step)
-        
+
         student_pred = student_pred.softmax(-1)
         teacher_pred = teacher_pred.softmax(-1).detach().data
         loss = ((student_pred - teacher_pred) ** 2).sum(-1).mean()
@@ -113,10 +112,10 @@ class ConsistencyLoss(nn.Module):
 class SmoothCrossEntropyLoss(nn.Module):
     """
     Cross-entropy loss with label smoothing.
-    
+
     Attributes:
         eps (float): Smoothing value.
-    
+
     Methods:
         __init__(self, eps=0.0, device="cuda"): Constructor.
         forward(self, inputs, targets): Computes the loss.
@@ -144,13 +143,14 @@ class SmoothCrossEntropyLoss(nn.Module):
         Returns:
             torch.Tensor: Loss values, averaged.
         """
-        y = targets
         if len(targets.size()) == 1:  # to one hot
             targets = torch.zeros_like(inputs).scatter(1, targets.view(-1, 1).long(), 1)
 
         if self.eps > 0:
             n_class = inputs.size(1)
-            targets = targets * (1 - self.eps) + (1 - targets)  * self.eps * self.sims[y]
+            targets = targets * (1 - self.eps) + (1 - targets) * self.eps / (
+                n_class - 1
+            )
 
         loss = -targets * F.log_softmax(inputs, dim=1)
         loss = loss.sum(-1)
@@ -160,7 +160,7 @@ class SmoothCrossEntropyLoss(nn.Module):
 class SignLoss(nn.Module):
     """
     Loss wrapper for the problem.
-    
+
     Attributes:
         config (dict): Configuration parameters.
         device (str): Device to use for computations.

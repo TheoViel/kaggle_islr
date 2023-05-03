@@ -113,7 +113,7 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
             max_len=config.max_len,
             verbose=0,
         ).cuda()
-        
+
     if config.distributed:
         if config.syncbn:
             model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
@@ -124,7 +124,7 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
             find_unused_parameters=False,
             broadcast_buffers=config.syncbn,
         )
-        
+
         if model_distilled is not None:
             model_distilled = DistributedDataParallel(
                 model_distilled,
@@ -142,14 +142,14 @@ def train(config, df_train, df_val, fold, log_folder=None, run=None):
 
     model.zero_grad(set_to_none=True)
     model.train()
-    
+
     if model_distilled is not None:
         model_distilled.zero_grad(set_to_none=True)
         model_distilled.train()
 
     for param in model_teacher.parameters():
         param.detach_()
-        
+
     n_parameters = count_parameters(model)
     if config.local_rank == 0:
         print(f"    -> {len(train_dataset)} training images")

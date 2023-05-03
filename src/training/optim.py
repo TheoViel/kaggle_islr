@@ -7,7 +7,7 @@ class Lookahead(Optimizer):
     """
     Implements the Lookahead optimization algorithm.
     """
-        
+
     def __init__(self, optimizer, k=5, alpha=0.5):
         """
         Constructor.
@@ -15,7 +15,7 @@ class Lookahead(Optimizer):
         Args:
             optimizer (torch.optim.Optimizer): The base optimizer.
             k (int, optional): Number of steps for lookahead. Defaults to 5.
-            alpha (float, optional): Weight for blending the fast weights with the slow weights. Defaults to 0.5.
+            alpha (float, optional): Coef for blending the fast & slow weights. Defaults to 0.5.
         """
         self.optimizer = optimizer
         self.k = k
@@ -31,10 +31,10 @@ class Lookahead(Optimizer):
         Updates parameters in a group.
         Group represents a parameter group in the optimizer.
         It typically contains the following keys:
-          - "params" (a list of parameters), 
-          - "lr" (learning rate), 
-          - "momentum", 
-          - "dampening", 
+          - "params" (a list of parameters),
+          - "lr" (learning rate),
+          - "momentum",
+          - "dampening",
           - "weight_decay",
         and other optimizer-specific parameters.
 
@@ -135,8 +135,7 @@ def define_optimizer(model, name, lr=1e-3, weight_decay=0, betas=(0.9, 0.999)):
         name (str): The name of the optimizer.
         lr (float, optional): The learning rate. Defaults to 1e-3.
         weight_decay (float, optional): The weight decay. Defaults to 0.
-        betas (tuple, optional): Coefficients used for computing running averages of gradient and its square.
-            Defaults to (0.9, 0.999).
+        betas (tuple, optional): Optimizer betas. Defaults to (0.9, 0.999).
 
     Raises:
         NotImplementedError: If the specified optimizer name is not supported.
@@ -172,11 +171,12 @@ def define_optimizer(model, name, lr=1e-3, weight_decay=0, betas=(0.9, 0.999)):
 
 def update_teacher_params(student, teacher, alpha, global_step):
     """
-    Updates the parameters of the teacher model using a combination of the true average and exponential average.
+    Updates the parameters of the teacher model,
+    using a combination of the true average and exponential average.
 
     Args:
-        student (torch.nn.Module): The student model whose parameters are used for the exponential average.
-        teacher (torch.nn.Module): The teacher model whose parameters are updated using the combination of averages.
+        student (torch.nn.Module): The student model used for the exponential average.
+        teacher (torch.nn.Module): The teacher model updated using the combination of averages.
         alpha (float): The weighting factor for the exponential average. Should be between 0 and 1.
         global_step (int): The global step or iteration number of the training process.
     """

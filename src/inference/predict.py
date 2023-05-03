@@ -6,7 +6,6 @@ from torch.utils.data import DataLoader
 from params import NUM_WORKERS
 
 
-
 def predict(model, dataset, loss_config, batch_size=64, device="cuda", use_fp16=False):
     """
     Perform model inference on a dataset.
@@ -17,7 +16,7 @@ def predict(model, dataset, loss_config, batch_size=64, device="cuda", use_fp16=
         loss_config (dict): Loss configuration.
         batch_size (int, optional): Batch size for inference. Defaults to 64.
         device (str, optional): Device to use for inference. Defaults to "cuda".
-        use_fp16 (bool, optional): Flag indicating whether to use mixed precision inference. Defaults to False.
+        use_fp16 (bool, optional): Whether to use mixed precision inference. Defaults to False.
 
     Returns:
         preds (numpy.ndarray): Predicted probabilities of shape (num_samples, num_classes).

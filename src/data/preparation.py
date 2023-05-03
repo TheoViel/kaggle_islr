@@ -50,6 +50,6 @@ def prepare_data(data_path="../input/", processed_folder=""):
         + df["sequence_id"].astype(str)
         + ".npy"
     )
-    
+
     df['len'] = np.load('../output/raw_lens.npy')
     return df

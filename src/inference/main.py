@@ -1,5 +1,4 @@
 import json
-import glob
 import torch
 import numpy as np
 import pandas as pd
@@ -20,8 +19,8 @@ def uniform_soup(model, weights, device="cpu", by_name=False, weighting="uniform
         model (torch.nn.Module): The base model.
         weights (list or torch.nn.Module): List of model weights or individual model weight.
         device (str, optional): Device to load the model on. Defaults to "cpu".
-        by_name (bool, optional): Flag indicating whether to match weights by name. Defaults to False.
-        weighting (str, optional): Type of weighting to apply ("uniform" or "linear"). Defaults to "uniform".
+        by_name (bool, optional): Whether to match weights by name. Defaults to False.
+        weighting (str, optional): Weighting to apply ("uniform"/"linear"). Defaults to "uniform".
 
     Returns:
         torch.nn.Module: The combined "soup" model.
@@ -52,7 +51,12 @@ def uniform_soup(model, weights, device="cpu", by_name=False, weighting="uniform
 
     if 0 < len(soups):
         soups = {
-            k: (torch.sum(torch.stack(v) * w.view([-1] + [1] * len(v[0].size())), axis=0) / w.sum()).type(v[0].dtype)
+            k: (
+                torch.sum(
+                    torch.stack(v) * w.view([-1] + [1] * len(v[0].size())), axis=0
+                )
+                / w.sum()
+            ).type(v[0].dtype)
             for k, v in soups.items()
             if len(v) != 0
         }
@@ -63,7 +67,16 @@ def uniform_soup(model, weights, device="cpu", by_name=False, weighting="uniform
 
 
 def kfold_inference_val(
-    df, exp_folder, debug=False, save=True, use_tta=False, use_fp16=False, train=False, use_mt=False, distilled=False, n_soup=0
+    df,
+    exp_folder,
+    debug=False,
+    save=True,
+    use_tta=False,
+    use_fp16=False,
+    train=False,
+    use_mt=False,
+    distilled=False,
+    n_soup=0
 ):
     """
     Perform k-fold cross-validation for model inference on the validation set.
@@ -71,13 +84,13 @@ def kfold_inference_val(
     Args:
         df (pd.DataFrame): DataFrame containing the data.
         exp_folder (str): Path to the experiment folder.
-        debug (bool, optional): Flag indicating whether to run in debug mode. Defaults to False.
-        save (bool, optional): Flag indicating whether to save the predictions. Defaults to True.
-        use_tta (bool, optional): Flag indicating whether to use test time augmentation. Defaults to False.
-        use_fp16 (bool, optional): Flag indicating whether to use mixed precision inference. Defaults to False.
-        train (bool, optional): Flag indicating whether to perform inference on the training set. Defaults to False.
-        use_mt (bool, optional): Flag indicating whether to use model teacher. Defaults to False.
-        distilled (bool, optional): Flag indicating whether to use distilled model. Defaults to False.
+        debug (bool, optional): Whether to run in debug mode. Defaults to False.
+        save (bool, optional): Whether to save the predictions. Defaults to True.
+        use_tta (bool, optional): Whether to use test time augmentation. Defaults to False.
+        use_fp16 (bool, optional): Whether to use mixed precision inference. Defaults to False.
+        train (bool, optional): Whether to perform inference on the training set. Defaults to False.
+        use_mt (bool, optional): Whether to use model teacher. Defaults to False.
+        distilled (bool, optional): Whether to use distilled model. Defaults to False.
         n_soup (int, optional): Number of models to use for model soup. Defaults to 0.
 
     Returns:
@@ -124,12 +137,21 @@ def kfold_inference_val(
 
         if config.model_soup and n_soup > 1:
             if use_mt:
-                weights = [exp_folder + f"{config.name}_teacher_{fold}_{ep}.pt" for ep in range(config.epochs - n_soup, config.epochs + 1)]
+                weights = [
+                    exp_folder + f"{config.name}_teacher_{fold}_{ep}.pt"
+                    for ep in range(config.epochs - n_soup, config.epochs + 1)
+                ]
             elif distilled:
-                weights = [exp_folder + f"{config.name}_distilled_{fold}_{ep}.pt" for ep in range(config.epochs - n_soup, config.epochs + 1)]
+                weights = [
+                    exp_folder + f"{config.name}_distilled_{fold}_{ep}.pt"
+                    for ep in range(config.epochs - n_soup, config.epochs + 1)
+                ]
             else:
-                weights = [exp_folder + f"{config.name}_{fold}_{ep}.pt" for ep in range(config.epochs - n_soup, config.epochs + 1)]
-            
+                weights = [
+                    exp_folder + f"{config.name}_{fold}_{ep}.pt"
+                    for ep in range(config.epochs - n_soup, config.epochs + 1)
+                ]
+
             weights = weights[-n_soup:]
             print("\nSoup :", weights)
             model = uniform_soup(model, weights)
@@ -161,7 +183,7 @@ def kfold_inference_val(
             train=False,
         )
 
-        pred_val, pred_val_aux = predict(
+        pred_val, pred_val_aux = predict_fct(
             model,
             dataset,
             config.loss_config,
@@ -197,5 +219,5 @@ def kfold_inference_val(
         if n_soup > 1:
             name += "_soup"
         np.save(exp_folder + f"{name}.npy", pred_oof)
-        
+
     return pred_oof

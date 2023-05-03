@@ -10,11 +10,12 @@ from data.transforms import augment, flip, add_missing_hand
 def crop_or_pad(data, max_len=100, mode="start"):
     """
     Crop or pad the data to a maximum length.
+    Mode options are "start" or "center"
 
     Args:
         data (dict): A dictionary containing the data.
         max_len (int, optional): The maximum length of the data. Defaults to 100.
-        mode (str, optional): The mode for cropping/padding. Options are "start" or "center". Defaults to "start".
+        mode (str, optional): The mode for cropping/padding. Defaults to "start".
 
     Returns:
         dict: The cropped or padded data.
@@ -126,8 +127,8 @@ class SignDataset(Dataset):
             max_len (int, optional): Maximum length of the data sequence. Defaults to None.
             aug_strength (int, optional): Augmentation strength. Defaults to 0.
             resize_mode (str, optional): Resize mode for the data. Defaults to "pad".
-            train (bool, optional): Flag indicating if the dataset is for training. Defaults to False.
-            dist (bool, optional): Flag indicating if the dataset uses distillation. Defaults to False.
+            train (bool, optional): Whether the dataset is for training. Defaults to False.
+            dist (bool, optional): Whether the dataset uses distillation. Defaults to False.
         """
         self.df = df
         self.max_len = max_len
@@ -157,7 +158,7 @@ class SignDataset(Dataset):
         Fills the buffer with data.
 
         Args:
-            tqdm_enabled (bool, optional): Flag indicating if tqdm progress bar should be displayed. Defaults to False.
+            tqdm_enabled (bool, optional): Whether to display tqdm progress bar. Defaults to False.
 
         """
         self.buffer_mode = True
@@ -305,7 +306,7 @@ class SignDataset(Dataset):
                 data_dist["mask"] = torch.ones(data_dist["x"].size())
 
         data["mask"] = torch.ones(data["x"].size())
-        
+
         if self.max_len is not None:
             if self.resize_mode == "pad":
                 data = crop_or_pad(data, max_len=self.max_len)

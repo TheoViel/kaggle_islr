@@ -10,19 +10,59 @@ from tflite.deberta import DebertaV2Encoder
 
 
 class DebertaV2Output(nn.Module):
+    """
+    Modified DebertaV2Output Layer. We changed the position of the skip connection,
+    to allow for output_size != intermediate_size.
+
+    Attributes:
+        dense (Linear): The linear transformation layer.
+        LayerNorm (LayerNorm): The layer normalization layer.
+        config (DebertaV2Config): The model configuration class instance.
+
+    Methods:
+        __init__(self, config): Initializes a DebertaV2Output instance with the specified config.
+        forward(self, hidden_states, input_tensor): Performs the forward pass.
+    """
     def __init__(self, config):
+        """
+        Constructor.
+
+        Args:
+            config (DebertaV2Config): The model configuration class instance.
+        """
         super().__init__()
         self.dense = nn.Linear(config.intermediate_size, config.output_size)
         self.LayerNorm = LayerNorm(config.output_size, config.layer_norm_eps)
         self.config = config
 
     def forward(self, hidden_states, input_tensor):
+        """
+        Performs the forward pass.
+
+        Args:
+            hidden_states (Tensor): The hidden states from the previous layer.
+            input_tensor (Tensor): The input tensor.
+
+        Returns:
+            Tensor: The output tensor.
+        """
         hidden_states = self.dense(hidden_states + input_tensor)
         hidden_states = self.LayerNorm(hidden_states)
         return hidden_states
-    
 
-def compute_ids(transpose=True, max_len=50, position_buckets=50, num_attention_heads=16):
+
+def compute_ids(transpose=True, max_len=50, position_buckets=50):
+    """
+    Precomputes the positional IDs for the transformer model.
+
+    Args:
+        transpose (bool, optional): Whether to transpose the positional IDs. Defaults to True.
+        max_len (int, optional): Maximum length of the sequence. Defaults to 50.
+        position_buckets (int, optional): Number of position buckets. Defaults to 50.
+
+    Returns:
+        torch.Tensor: Computed positional IDs.
+    """
     if transpose:
         ids = (
             np.arange(max_len)[None]
@@ -44,11 +84,44 @@ def compute_ids(transpose=True, max_len=50, position_buckets=50, num_attention_h
 
 class Model(nn.Module):
     """
-    Model with an attention mechanism.
+    Rewrites the SignMLPBert3 class to be optimized for TFLite inference.
+
+    Attributes:
+        num_classes (int): The number of classes for the main task.
+        num_classes_aux (int): The number of classes for auxiliary tasks.
+        transfo_heads (int): The number of attention heads in the transformer.
+        transfo_layers (int): The number of transformer layers.
+        max_len (int): The maximum length of input sequences.
+
+        type_embed (nn.Embedding): Embedding layer for the type input.
+        landmark_embed (nn.Embedding): Embedding layer for the landmark input.
+        type_norm (nn.LayerNorm): Layer normalization for the type embeddings.
+        landmark_norm (nn.LayerNorm): Layer normalization for the landmark embeddings.
+        pos_cnn (nn.Sequential): CNN layers for positional encoding.
+        pos_dense (nn.Linear): Dense layer for positional encoding.
+        dense (nn.Linear): Dense layer for combining input features.
+        left_hand_mlp (nn.Sequential): MLP layers for left hand features.
+        right_hand_mlp (nn.Sequential): MLP layers for right hand features.
+        lips_mlp (nn.Sequential): MLP layers for lips features.
+        face_mlp (nn.Sequential): MLP layers for face features.
+        full_mlp (nn.Sequential): MLP layers for all features.
+        landmark_mlp (nn.Sequential): MLP layers for landmark features.
+        frame_transformer_1 (DebertaV2Encoder): First DeBERTa transformer layer.
+        frame_transformer_2 (DebertaV2Encoder): Second DeBERTa transformer layer.
+        frame_transformer_3 (DebertaV2Encoder): Third DeBERTa transformer layer.
+        logits (nn.Linear): Linear layer for main task classification.
+
+        offset (torch.Tensor): Precomputed offsets for relative position embeddings
+        ids (torch.Tensor): Precomputed ids for relative position embeddings
+        ids_t (torch.Tensor): Precomputed transposed ids for relative position embeddings
+
+    Methods:
+        __init__(self, embed_dim, transfo_dim, dense_dim, transfo_heads, transfo_layers, drop_rate,
+                 num_classes,num_classes_aux, n_landmarks, max_len): Constructor
+        forward(self, x, perm, coefs): Performs the forward pass.
     """
     def __init__(
         self,
-        type_embed,
         embed_dim=256,
         dense_dim=384,
         transfo_dim=768,
@@ -58,22 +131,25 @@ class Model(nn.Module):
         drop_rate=0,
         n_landmarks=100,
         max_len=50,
-        normalize=True
     ):
         """
         Constructor.
 
         Args:
-            encoder (timm model): Encoder.
-            num_classes (int, optional): Number of classes. Defaults to 1.
-            num_classes_aux (int, optional): Number of aux classes. Defaults to 0.
-            n_channels (int, optional): Number of image channels. Defaults to 3.
+            embed_dim (int, optional): The embedding dimension. Defaults to 256.
+            dense_dim (int, optional): The dense layer dimension. Defaults to 512.
+            transfo_dim (int, optional): The transformer layer dimension. Defaults to 768.
+            transfo_layers (int, optional): The number of transformer layers. Defaults to 4.
+            transfo_heads (int, optional): Number of attention heads. Defaults to 8.
+            num_classes (int, optional): The number of classes for the main task. Defaults to 250.
+            drop_rate (float, optional): The dropout rate. Defaults to 0.
+            n_landmarks (int, optional): The number of landmarks. Defaults to 100.
+            max_len (int, optional): The maximum length of input sequences. Defaults to 40.
         """
         super().__init__()
         self.num_classes = num_classes
         self.num_classes_aux = 0
         self.transfo_heads = transfo_heads
-        self.normalize = normalize
 
         self.type_embed = nn.Embedding(9, embed_dim, padding_idx=0)
         self.landmark_embed = nn.Embedding(101, embed_dim, padding_idx=0)
@@ -85,18 +161,18 @@ class Model(nn.Module):
             nn.Conv1d(8, 16, kernel_size=5, padding=2, bias=False),
         )
         self.pos_dense = nn.Linear(19, embed_dim)
-        
+
         self.dense = nn.Linear(3 * embed_dim, embed_dim)
-        
+
         self.left_hand_mlp = nn.Sequential(
-            nn.Linear(embed_dim * 21, dense_dim), 
+            nn.Linear(embed_dim * 21, dense_dim),
             nn.BatchNorm1d(dense_dim),
             nn.Dropout(p=drop_rate),
             nn.Mish(),
         )
 
         self.right_hand_mlp = nn.Sequential(
-            nn.Linear(embed_dim * 21 , dense_dim),
+            nn.Linear(embed_dim * 21, dense_dim),
             nn.BatchNorm1d(dense_dim),
             nn.Dropout(p=drop_rate),
             nn.Mish(),
@@ -108,14 +184,14 @@ class Model(nn.Module):
             nn.Dropout(p=drop_rate),
             nn.Mish(),
         )
-        
+
         self.face_mlp = nn.Sequential(
             nn.Linear(embed_dim * 25, dense_dim),
             nn.BatchNorm1d(dense_dim),
             nn.Dropout(p=drop_rate),
             nn.Mish(),
         )
-        
+
         self.full_mlp = nn.Sequential(
             nn.Linear(embed_dim * n_landmarks, dense_dim),
             nn.BatchNorm1d(dense_dim),
@@ -131,7 +207,7 @@ class Model(nn.Module):
             else:  # BIG Models
                 delta = (transfo_dim - 1024) // 2
                 transfo_dim = 1024
-        else:  # 768, 768 
+        else:  # 768, 768
             delta = 0
         self.transfo_dim = transfo_dim
 
@@ -167,7 +243,7 @@ class Model(nn.Module):
         if transfo_layers >= 2:
             config.hidden_size += delta
             config.intermediate_size += delta
-            
+
             if transfo_layers >= 3 and transfo_dim_ >= 1024:
                 config.output_size += delta
 
@@ -213,27 +289,28 @@ class Model(nn.Module):
         )
         for k in range(1, config.max_len + 1):
             self.ids[k - 1, :, :k, :k] = compute_ids(
-                transpose=False, max_len=k, position_buckets=max_len, num_attention_heads=transfo_heads
+                transpose=False, max_len=k, position_buckets=max_len
             )
             self.ids_t[k - 1, :, :k, :k] = compute_ids(
-                transpose=True, max_len=k, position_buckets=max_len, num_attention_heads=transfo_heads
+                transpose=True, max_len=k, position_buckets=max_len
             )
 
-        self.offset = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]) * 2 * max_len
+        self.offset = torch.tensor(
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        ) * 2 * max_len
         self.offset = self.offset.int()
-            
+
     def forward(self, x):
         """
-        Forward function.
+        Performs the forward pass.
 
         Args:
-            x (torch tensor [batch_size x c x h x w]): Input batch.
-            return_fts (bool, Optional): Whether to return encoder features.
+            x (Tensor): The input tensor containing sign language data.
+            perm (Tensor, optional): Permutation tensor for Manifold Mixup. Defaults to None.
+            coefs (Tensor, optional): Coefficients tensor for Manifold Mixup. Defaults to None.
 
         Returns:
-            torch tensor [batch_size x num_classes]: logits.
-            torch tensor [batch_size x num_classes_aux]: logits aux.
-            torch tensor [batch_size x num_features]: Encoder features, if return_fts.
+            Tuple[Tensor, Tensor]: The main task logits and auxiliary task logits (if applicable).
         """
         x = x.unsqueeze(0)
 
@@ -243,11 +320,8 @@ class Model(nn.Module):
         x_landmark = self.landmark_norm(self.landmark_embed(x[:, :, 4].long()))
 
         x_pos_ = x[:, :, 1:4].transpose(2, 3).contiguous()
-        
-#         padding = torch.zeros((bs, 2, n_landmarks, 3))  # FIX CNN SIDE EFFECT
-#         x_pos_ = torch.pad([x_pos_, padding], 1)
         x_pos_ = F.pad(x_pos_, (0, 0, 0, 0, 0, 2))
-        
+
         x_pos = x_pos_.transpose(1, 2).transpose(2, 3).contiguous().view(bs * n_landmarks, 3, -1)
         x_pos = self.pos_cnn(x_pos)
         x_pos = x_pos.view(bs, n_landmarks, 16, -1).transpose(2, 3).transpose(1, 2).contiguous()
@@ -258,39 +332,35 @@ class Model(nn.Module):
         x_pos = self.pos_dense(x_pos)
 
         fts = self.dense(torch.cat([x_type, x_landmark, x_pos], -1))
-        
+
         n_fts = fts.size(-1)
         embed = x[:, :, 0].contiguous().unsqueeze(1).view(-1).long()
 
 #         left_hand_fts = fts.view(-1, n_fts)[embed == 1].view(-1, 21 * n_fts)
         left_hand_fts = fts.view(-1, n_fts)[embed == 1].view(bs, -1, 21, n_fts)
-        if self.normalize:
-            left_hand_fts -= left_hand_fts.mean(1).mean(1).unsqueeze(1).unsqueeze(1)
+        left_hand_fts -= left_hand_fts.mean(1).mean(1).unsqueeze(1).unsqueeze(1)
         left_hand_fts = left_hand_fts.view(-1, 21 * n_fts)
         left_hand_fts = self.left_hand_mlp(left_hand_fts)
 
         right_hand_fts = fts.view(-1, n_fts)[embed == 2].view(bs, -1, 21, n_fts)
-        if self.normalize:
-            right_hand_fts -= right_hand_fts.mean(1).mean(1).unsqueeze(1).unsqueeze(1)
+        right_hand_fts -= right_hand_fts.mean(1).mean(1).unsqueeze(1).unsqueeze(1)
         right_hand_fts = right_hand_fts.view(-1, 21 * n_fts)
         right_hand_fts = self.right_hand_mlp(right_hand_fts)
-        
+
         hand_fts = torch.stack([left_hand_fts, right_hand_fts], -1).amax(-1)
 
         lips_fts = fts.view(-1, n_fts)[embed == 4].view(bs, -1, 21, n_fts)
-        if self.normalize:
-            lips_fts -= lips_fts.mean(1).mean(1).unsqueeze(1).unsqueeze(1)
+        lips_fts -= lips_fts.mean(1).mean(1).unsqueeze(1).unsqueeze(1)
         lips_fts = lips_fts.view(-1, 21 * n_fts)
         lips_fts = self.lips_mlp(lips_fts)
 
         face_fts = fts.view(-1, n_fts)[(embed == 3) | (embed == 6)].view(bs, -1, 25, n_fts)
-        if self.normalize:
-            face_fts -= face_fts.mean(1).mean(1).unsqueeze(1).unsqueeze(1)
+        face_fts -= face_fts.mean(1).mean(1).unsqueeze(1).unsqueeze(1)
         face_fts = face_fts.view(-1, 25 * n_fts)
         face_fts = self.face_mlp(face_fts)
 
         fts = fts.view(-1, n_fts * n_landmarks)
-    
+
         fts = self.full_mlp(fts)
 
         fts = torch.cat([fts, hand_fts, lips_fts, face_fts], -1)
@@ -298,7 +368,6 @@ class Model(nn.Module):
         fts = self.landmark_mlp(fts)
         fts = fts.view(bs, -1, self.transfo_dim)
 
-    
         ids_t = self.ids_t[sz - 1, :, :sz, :sz].contiguous()
         ids = self.ids[sz - 1, :, :sz, :sz].contiguous()
         offset = (self.offset.unsqueeze(1).unsqueeze(1) * sz)
@@ -316,5 +385,3 @@ class Model(nn.Module):
         logits = self.logits(fts)
 
         return logits
-
-    

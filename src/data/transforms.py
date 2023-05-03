@@ -26,7 +26,7 @@ def flip(data, flip_array=FLIP_ARRAY, p=1):
 
     Args:
         data (dict): The input data.
-        flip_array (numpy.ndarray, optional): Array mapping indices to their flipped indices. Defaults to FLIP_ARRAY.
+        flip_array (np.ndarray, optional): Maps ids to the flipped id. Defaults to FLIP_ARRAY_HANDS.
         p (float, optional): Probability of flipping the data. Defaults to 1.
 
     Returns:
@@ -82,7 +82,7 @@ def add_missing_hand(data, flip_array=FLIP_ARRAY_HANDS, p=1.0):
 
     Args:
         data (dict): The input data.
-        flip_array (numpy.ndarray, optional): Array mapping indices to their flipped indices. Defaults to FLIP_ARRAY_HANDS.
+        flip_array (np.ndarray, optional): Maps ids to the flipped id. Defaults to FLIP_ARRAY_HANDS.
         p (float, optional): Probability of adding missing hand data. Defaults to 1.0.
 
     Returns:
@@ -121,8 +121,8 @@ def add_missing_hand(data, flip_array=FLIP_ARRAY_HANDS, p=1.0):
         ) + flipped[k][missing_right] * (embed == 1).unsqueeze(0)
 
     return data
-    
-    
+
+
 def scale(data, factor=0.3, p=0.5):
     """
     Scales the input data by a random factor.
@@ -224,10 +224,10 @@ def crop(data, max_crop=0.2, p=0.5):
     """
     if np.random.random() > p:
         return data
-    
+
     if len(data["x"]) < 20:  # too short
         return data
-    
+
     crop = np.random.randint(1, int(len(data["x"]) * max_crop))
     if np.random.random() > 0.5:  # left
         return {
@@ -270,6 +270,5 @@ def augment(data, aug_strength=0):
 
         data = flip(data, p=0.5)
         data = rotate(data, max_angle=1 / 12, p=0.25)
-
 
     return data

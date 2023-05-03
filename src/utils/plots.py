@@ -1,13 +1,9 @@
-import matplotlib
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from IPython.display import HTML
 from sklearn.metrics import confusion_matrix
-from matplotlib.animation import FuncAnimation
-
-from params import FACE_LANDMARKS, ARM_LANDMARKS, GRAPH
+from params import GRAPH
 
 
 def plot_confusion_matrix(
@@ -24,7 +20,7 @@ def plot_confusion_matrix(
     Args:
         y_pred (numpy array): Predictions.
         y_true (numpy array): Truths.
-        cm (numpy array or None, optional): Confusion matrix. If not provided, it will be computed using y_pred and y_true.
+        cm (numpy array or None, optional): Precomputed onfusion matrix. Defaults to None.
         normalize (bool or None, optional): Whether to normalize the matrix. Defaults to None.
         display_labels (list of strings or None, optional): Axis labels. Defaults to None.
         cmap (str, optional): Colormap name. Defaults to "viridis".
@@ -65,7 +61,7 @@ def plot_sample(data, n_frames=4, figsize=(10, 10)):
         data (dict): Data dictionary containing "x", "y", and "type" arrays.
         n_frames (int, optional): Number of frames to plot. Defaults to 4.
         figsize (tuple, optional): Figure size. Defaults to (10, 10).
-    """ 
+    """
     frames = np.linspace(0, data["x"].shape[0], n_frames, dtype=int, endpoint=False)
     plt.figure(figsize=figsize)
 

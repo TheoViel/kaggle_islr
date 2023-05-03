@@ -1,7 +1,8 @@
-# 6th place solution to the Google - Isolated Sign Language Recognition
+# 6th place solution to the Google - Isolated Sign Language Recognition Competition
 
+**Authors :** [Theo Viel](https://github.com/TheoViel), [Christof Henkel](https://github.com/ChristofHenkel)
 
-## Introduction - Adapted from [kaggle](https://www.kaggle.com/competitions/asl-signs/discussion/406537)
+## Introduction - Adapted from [Kaggle](https://www.kaggle.com/competitions/asl-signs/discussion/406537)
 
 Our solution is a 2 model ensemble of a MLP-encoder-frame-transformer model. We pushed our transformer models close to the limit and implemented a lot of tricks to climb up to 6th place. 
 

@@ -41,7 +41,7 @@ Our solution is a 2 model ensemble of a MLP-encoder-frame-transformer model. We 
 - Resizing by a factor in `(0.7, 1.3)` (`p=0.5`). We also allow for distortion (`p=0.5`)
 - Crop 20% of the start or end (`p=0.5`)
 - Interpolate to fill missing values (`p=0.5`)
-- Manifold Mixup [[1]](https://arxiv.org/abs/1806.05236) (scheduled, `p=0.5 * epoch / (0.9 * n_epochs)`) : random apply mixup to the features before one of the transformer layer
+- Manifold Mixup [[1]](https://arxiv.org/abs/1806.05236) (scheduled, `p=0.5 * epoch / (0.9 * n_epochs)`) : randomly apply mixup to the features before one of the transformer layer
 - Only during the first half of the training, since it improved convergence
   - Fill the value of the missing hand with those of the existing one (`p=0.25`)
   - Face CutMix : replace the face landmarks with those of another signer doing the same sign (`p=0.25`)
